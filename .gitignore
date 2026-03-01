@@ -1,0 +1,24 @@
+# Thesis files
+Klopček-aplikacna*.docx
+*.docx
+
+# Tools directory (local binaries)
+tools/
+
+# Docker
+.dockerignore
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
