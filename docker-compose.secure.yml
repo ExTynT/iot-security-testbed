@@ -1,0 +1,22 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.1.2
+    volumes:
+      - ./configs/mqtt/secure/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./configs/mqtt/secure/aclfile:/mosquitto/config/aclfile:ro
+      - ./configs/mqtt/secure/passwd:/mosquitto/config/passwd:ro
+      - ./configs/mqtt/secure/certs:/mosquitto/config/certs:ro
+
+  coap:
+    build: ./images/coap-server
+    command: >
+      sh -c "coap-server -A 0.0.0.0 -k ${COAP_PSK} -h ${COAP_HINT} -v 6 2>&1 | tee /logs/coap.log"
+
+  dut:
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=8883
+      - MQTT_USER=device01
+      - MQTT_PASS=${MQTT_PASS}
+      - OTA_BASE=http://ota
+      - MINISIGN_PUBKEY=${MINISIGN_PUBKEY}

@@ -1,0 +1,3 @@
+user device01
+topic write telemetry/#
+topic read  cmd/#

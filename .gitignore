@@ -22,3 +22,23 @@ tools/
 # OS
 .DS_Store
 Thumbs.db
+
+# Certificates and keys (lab only - do not commit private keys)
+*.key
+*.srl
+*.csr
+configs/mqtt/secure/certs/
+configs/mqtt/secure/passwd
+
+# Run artifacts
+runs/20*/
+!runs/.gitkeep
+
+# CoAP PSK config
+configs/coap/*.env
+
+# OTA firmware binaries
+configs/ota/repo/*.bin
+configs/ota/*.pub
+configs/ota/*.key
+!configs/ota/repo/manifest.json

@@ -1,0 +1,87 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    networks: [iot_net]
+    volumes:
+      - ./configs/mqtt/baseline/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./runs/${RUN_ID}/logs:/logs
+    restart: unless-stopped
+
+  coap:
+    build: ./images/coap-server
+    networks: [iot_net]
+    command: >
+      sh -c "coap-server -A 0.0.0.0 -v 6 2>&1 | tee /logs/coap.log"
+    volumes:
+      - ./runs/${RUN_ID}/logs:/logs
+    restart: unless-stopped
+
+  ota:
+    image: nginx:alpine
+    networks: [iot_net]
+    volumes:
+      - ./configs/ota/repo:/usr/share/nginx/html:ro
+      - ./runs/${RUN_ID}/logs:/logs
+    command: >
+      sh -c "nginx -g 'daemon off;'"
+    restart: unless-stopped
+
+  dut:
+    build: ./images/dut
+    networks: [iot_net]
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - OTA_BASE=http://ota
+      - MINISIGN_PUBKEY=${MINISIGN_PUBKEY}
+    volumes:
+      - ./runs/${RUN_ID}/logs:/logs
+      - ./runs/${RUN_ID}/state:/state
+    command: >
+      sh -c "python /app/dut.py 2>&1 | tee /logs/dut.log"
+    restart: unless-stopped
+
+  attacker:
+    build: ./images/attacker
+    networks: [iot_net]
+    tty: true
+    stdin_open: true
+
+  sniffer_mqtt:
+    build: ./images/sniffer
+    network_mode: "service:mosquitto"
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    volumes:
+      - ./runs/${RUN_ID}/pcap:/pcap
+    command: "tcpdump -i any -w /pcap/mqtt.pcap '(port 1883 or port 8883)'"
+
+  sniffer_coap:
+    build: ./images/sniffer
+    network_mode: "service:coap"
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    volumes:
+      - ./runs/${RUN_ID}/pcap:/pcap
+    command: "tcpdump -i any -w /pcap/coap.pcap '(port 5683 or port 5684)'"
+
+  sniffer_ota:
+    build: ./images/sniffer
+    network_mode: "service:ota"
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    volumes:
+      - ./runs/${RUN_ID}/pcap:/pcap
+    command: "tcpdump -i any -w /pcap/ota.pcap '(port 80 or port 443)'"
+
+  monitor-collector:
+    build: ./images/monitor-collector
+    networks: [mgmt_net]
+    volumes:
+      - ./runs/${RUN_ID}/pcap:/pcap:ro
+      - ./runs/${RUN_ID}/logs:/logs:ro
+      - ./runs/${RUN_ID}/results:/results
+    restart: "no"
+
+networks:
+  iot_net:
+    internal: true
+  mgmt_net:
+    internal: true
