@@ -1,0 +1,12 @@
+# CoAP Secure overlay: DTLS/PSK na porte 5684, port 5683 zablokovaný
+# Použitie:
+#   docker compose -f docker-compose.yml -f docker-compose.coap-secure.yml up -d
+#
+# Prerekvizita: libcoap musí byť skompilovanie s DTLS (OpenSSL). Dockerfile to
+# robí automaticky, keď je openssl-dev prítomné.
+services:
+  coap:
+    cap_add:
+      - NET_ADMIN
+    # Port 5683 blokovaný firewallom; autentifikácia povinná len cez DTLS/PSK na 5684
+    command: ["sh", "-c", "iptables -I INPUT -p udp --dport 5683 -j DROP && echo 'Firewall: port 5683 BLOCKED' || echo 'Firewall: iptables nedostupny'; echo 'CoAP DTLS PSK: 5683=BLOCKED 5684=DTLS+PSK'; coap-server -A 0.0.0.0 -k ${COAP_PSK} -h ${COAP_HINT} -v 6 2>&1 | tee /logs/coap.log"]

@@ -1,6 +1,7 @@
 # Thesis files
 Klopček-aplikacna*.docx
 *.docx
+THESIS_NOTES.md
 
 # Tools directory (local binaries)
 tools/

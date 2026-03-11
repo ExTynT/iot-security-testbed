@@ -1,0 +1,19 @@
+# MQTT Secure overlay: TLS (port 8883) + ACL + password auth
+# Použitie:
+#   docker compose -f docker-compose.yml -f docker-compose.mqtt-secure.yml up -d
+services:
+  mosquitto:
+    volumes:
+      - ./configs/mqtt/secure/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./configs/mqtt/secure/aclfile:/mosquitto/config/aclfile:ro
+      - ./configs/mqtt/secure/passwd:/mosquitto/config/passwd:ro
+      - ./configs/mqtt/secure/certs:/mosquitto/config/certs:ro
+
+  dut:
+    environment:
+      - MQTT_PORT=8883
+      - MQTT_USER=device01
+      - MQTT_PASS=${MQTT_PASS}
+      - MQTT_TLS_CA=/certs/ca.crt
+    volumes:
+      - ./configs/mqtt/secure/certs/ca.crt:/certs/ca.crt:ro

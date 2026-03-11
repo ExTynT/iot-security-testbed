@@ -10,8 +10,7 @@ services:
   coap:
     build: ./images/coap-server
     networks: [iot_net]
-    command: >
-      sh -c "coap-server -A 0.0.0.0 -v 6 2>&1 | tee /logs/coap.log"
+    command: ["sh", "-c", "coap-server -A 0.0.0.0 -v 6 2>&1 | tee /logs/coap.log"]
     volumes:
       - ./runs/${RUN_ID}/logs:/logs
     restart: unless-stopped
@@ -41,11 +40,20 @@ services:
       sh -c "python /app/dut.py 2>&1 | tee /logs/dut.log"
     restart: unless-stopped
 
+  ota_evil:
+    image: nginx:alpine
+    networks: [iot_net]
+    volumes:
+      - ./configs/ota/evil:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
   attacker:
     build: ./images/attacker
     networks: [iot_net]
     tty: true
     stdin_open: true
+    volumes:
+      - ./configs/mqtt/secure/certs:/work/certs:ro
 
   sniffer_mqtt:
     build: ./images/sniffer
@@ -53,7 +61,7 @@ services:
     cap_add: ["NET_ADMIN", "NET_RAW"]
     volumes:
       - ./runs/${RUN_ID}/pcap:/pcap
-    command: "tcpdump -i any -w /pcap/mqtt.pcap '(port 1883 or port 8883)'"
+    command: ["tcpdump", "-i", "any", "-U", "-w", "/pcap/mqtt.pcap", "port 1883 or port 8883"]
 
   sniffer_coap:
     build: ./images/sniffer
@@ -61,7 +69,7 @@ services:
     cap_add: ["NET_ADMIN", "NET_RAW"]
     volumes:
       - ./runs/${RUN_ID}/pcap:/pcap
-    command: "tcpdump -i any -w /pcap/coap.pcap '(port 5683 or port 5684)'"
+    command: ["tcpdump", "-i", "any", "-U", "-w", "/pcap/coap.pcap", "port 5683 or port 5684"]
 
   sniffer_ota:
     build: ./images/sniffer
@@ -69,7 +77,15 @@ services:
     cap_add: ["NET_ADMIN", "NET_RAW"]
     volumes:
       - ./runs/${RUN_ID}/pcap:/pcap
-    command: "tcpdump -i any -w /pcap/ota.pcap '(port 80 or port 443)'"
+    command: ["tcpdump", "-i", "any", "-U", "-w", "/pcap/ota.pcap", "port 80 or port 443"]
+
+  sniffer_ota_evil:
+    build: ./images/sniffer
+    network_mode: "service:ota_evil"
+    cap_add: ["NET_ADMIN", "NET_RAW"]
+    volumes:
+      - ./runs/${RUN_ID}/pcap:/pcap
+    command: ["tcpdump", "-i", "any", "-U", "-w", "/pcap/ota_evil.pcap", "port 80 or port 443"]
 
   monitor-collector:
     build: ./images/monitor-collector
@@ -77,6 +93,7 @@ services:
     volumes:
       - ./runs/${RUN_ID}/pcap:/pcap:ro
       - ./runs/${RUN_ID}/logs:/logs:ro
+      - ./runs/${RUN_ID}/state:/state:ro
       - ./runs/${RUN_ID}/results:/results
     restart: "no"
 
