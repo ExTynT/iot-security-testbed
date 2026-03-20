@@ -19,7 +19,8 @@ if not os.path.exists(VERSION_FILE):
         f.write("0.0.0")
 
 def read_version():
-    return open(VERSION_FILE).read().strip()
+    with open(VERSION_FILE) as f:
+        return f.read().strip()
 
 def write_version(v):
     with open(VERSION_FILE, "w") as f:
@@ -61,16 +62,22 @@ def ota_check_and_apply(base: str):
             print(f"OTA: chyba stiahnutia podpisu – {e}")
             return
         # Bez pubkey: .minisig neexistuje je OK, vytvoríme prázdny placeholder
-        open("/tmp/manifest.json.minisig", "wb").close()
+        with open("/tmp/manifest.json.minisig", "wb"):
+            pass
 
     ok = verify_manifest("/tmp/manifest.json")
     if not ok:
         print("OTA: podpis NEPLATNÝ – aktualizácia ZAMIETNUTÁ")
         return
 
-    manifest = json.loads(open("/tmp/manifest.json").read())
-    new_ver  = manifest["version"]
-    file_name = manifest["file"]
+    try:
+        with open("/tmp/manifest.json") as f:
+            manifest = json.loads(f.read())
+        new_ver   = manifest["version"]
+        file_name = manifest["file"]
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"OTA: chybny manifest ({e}) – aktualizacia ZAMIETNUTÁ", flush=True)
+        return
 
     if new_ver == read_version():
         print("OTA: verzia rovnaká – nič nerobím")
@@ -79,7 +86,8 @@ def ota_check_and_apply(base: str):
     try:
         fw = requests.get(f"{base}/{file_name}", timeout=10)
         fw.raise_for_status()
-        open("/tmp/fw.bin", "wb").write(fw.content)
+        with open("/tmp/fw.bin", "wb") as f:
+            f.write(fw.content)
     except Exception as e:
         print(f"OTA: chyba stiahnutia firmware – {e}")
         return

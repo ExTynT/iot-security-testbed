@@ -270,7 +270,7 @@ lines.append(
 lines.append("| # | Zranitelnost | C | I | A | CVSS v4.0 (pred) | CVSS v4.0 (po) |")
 lines.append("|---|-------------|---|---|---|-----------------|----------------|")
 cvss_rows = [
-    ("P1", "MQTT broker bez auth/TLS (port 1883)",         "H","H","H", "9.3 (Critical)", "2.1 (Low)"),
+    ("P1", "MQTT broker bez auth/TLS (port 1883)",         "H","H","L", "9.3 (Critical)", "2.1 (Low)"),
     ("P2", "CoAP plaintext bez autentifikacie (port 5683)","L","L","L", "5.3 (Medium)",   "3.1 (Low)"),
     ("P3", "OTA firmver bez overenia podpisu",             "H","H","L", "9.2 (Critical)", "2.1 (Low)"),
 ]
@@ -564,7 +564,7 @@ impact_txt = {0: "Ziadny", 1: "Nizky", 2: "Stredny", 3: "Vysoky"}
 cia_matrix = np.array([
     [3, 1,  1, 1,  3, 0],   # Dovernost (C)  P2: VC:L→1; P3: VC:H→3
     [2, 1,  1, 1,  3, 1],   # Integrita (I)  P2: VI:L→1
-    [2, 1,  1, 1,  1, 0],   # Dostupnost (A) P2: VA:L→1; P3: VA:L→1
+    [1, 1,  1, 1,  1, 0],   # Dostupnost (A) P1: VA:L→1; P2: VA:L→1; P3: VA:L→1
 ], dtype=float)
 
 col_labels = ["P1\npred", "P1\npo", "P2\npred", "P2\npo", "P3\npred", "P3\npo"]

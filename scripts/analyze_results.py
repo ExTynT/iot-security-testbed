@@ -279,8 +279,11 @@ for num, vuln, c, i, a, before, after in cvss_rows:
 
 lines.append("")
 lines.append(
-    "> Vektory (CVSS v4.0): AV:N/AC:L/AT:N/PR:N/UI:N. "
-    "Po mitigacii: utok nie je mozny v definovanom threat modeli testbedu.\n"
+    "> Vektory pred mitigaciou (CVSS v4.0): AV:N/AC:L/AT:N/PR:N/UI:N. "
+    "Rezidualne skore po mitigacii: "
+    "P1=2.1 (brute-force hesla AC:H/AT:P, DoS TLS handshake flood VA:L); "
+    "P2=3.1 (race condition iptables – empiricky 0–3/10 poziadaviek preniklo, UDP amplifikacia); "
+    "P3=2.1 (rollback attack – deploy starsi podpisany firmver, chyba version-pinning v testbede).\n"
 )
 
 # Verzie komponentov
@@ -307,13 +310,12 @@ lines.append(f"*Generovane automaticky z {len(runs)} run(s) v priecinku `/runs`.
 print("\n".join(lines))
 
 # ─── Matplotlib grafy ─────────────────────────────────────────────────────────
-# Grafy sa generuju do /runs/figures/ a pouzivaju sa priamo v bakalárskej práci.
-
 try:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    from matplotlib.colors import LinearSegmentedColormap
     import numpy as np
     HAS_MPL = True
 except ImportError:
@@ -325,7 +327,6 @@ if not HAS_MPL:
 
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-# Spolocny styl
 plt.rcParams.update({
     "font.family":      "DejaVu Sans",
     "font.size":        11,
@@ -344,194 +345,284 @@ plt.rcParams.update({
     "savefig.facecolor":"white",
 })
 
-C_BASE = "#E74C3C"   # cervena = zranitelny/utok uspel
-C_SEC  = "#27AE60"   # zelena  = zabezpeceny/odmietnuty
-SOURCE = "Zdroj: vlastne merania (Klopček, 2025)"
+C_BASE = "#E74C3C"    # cervena  = zranitelny / utok uspel
+C_SEC  = "#27AE60"    # zelena   = zabezpeceny / odmietnuty
+C_GRAY = "#95A5A6"    # siva     = N/A (nevztahuje sa na scenar)
+SOURCE = "Zdroj: vlastne merania (Klopecek, 2025)"
 
-# ── Graf 1: P1 MQTT ───────────────────────────────────────────────────────────
-b_denied = get_avg("P1_mqtt_unauth_denied", "mqtt-baseline") or 0
-s_denied = get_avg("P1_mqtt_unauth_denied", "mqtt-secure")   or 0
-b_success_vals = [r["kpi"].get("P1_mqtt_unauth_success", 0)
-                  for r in by_scenario.get("mqtt-baseline", [])]
-b_success = avg(b_success_vals) or 0
+def bar_label(ax, bar, val, ymax, extra="", color="black"):
+    """Anotuje stlpec hodnotou – aj pri val=0 (vykresli text nad osou)."""
+    x = bar.get_x() + bar.get_width() / 2
+    y = max(val, ymax * 0.025)
+    label = (str(int(val)) if float(val) == int(val) else f"{val:.1f}") + extra
+    ax.text(x, y, label, ha="center", va="bottom",
+            fontsize=10, fontweight="bold", color=color)
 
-fig, ax = plt.subplots(figsize=(8, 4.5))
-scen_labels = ["Baseline\n(port 1883, allow_anonymous)", "Secure\n(port 8883, TLS 1.3 + ACL)"]
-# Baseline: zobrazime uspesne utoky; Secure: zobrazime odmietnutia
-b_show = b_success if b_success > 0 else (1 if b_denied == 0 else 0)
-vals   = [b_show, s_denied]
-cols   = [C_BASE, C_SEC]
-bars   = ax.bar(scen_labels, vals, color=cols, width=0.42, edgecolor="white", linewidth=1.5)
+# ── Graf 1: P1 MQTT – 4 stlpce (2 skupiny × 2 metriky) ──────────────────────
+#   Skupina Baseline: [Uspesne utoky (red), Odmietnutia (green=0)]
+#   Skupina Secure:   [Uspesne utoky (red=0), Odmietnutia (green)]
+#   Ukazuje KOMPLETNY PRIEBEH 30 pokusov v oboch scenaroch.
+b_success = get_avg("P1_mqtt_unauth_success", "mqtt-baseline") or 0
+s_success = get_avg("P1_mqtt_unauth_success", "mqtt-secure")   or 0
+b_denied  = get_avg("P1_mqtt_unauth_denied",  "mqtt-baseline") or 0
+s_denied  = get_avg("P1_mqtt_unauth_denied",  "mqtt-secure")   or 0
 
-b_lbl = f"{fmt(b_show)}  (utok USPESNY)" if b_show > 0 else f"0  (utok USPESNY - denied=0)"
-s_lbl = f"{fmt(s_denied)}  (ODMIETNUTY)"
-for bar, val, lbl in zip(bars, vals, [b_lbl, s_lbl]):
-    ax.text(bar.get_x() + bar.get_width() / 2, max(val, 0) + max(max(vals)*0.03, 0.05),
-            lbl, ha="center", va="bottom", fontsize=9, fontweight="bold")
+fig, ax = plt.subplots(figsize=(9, 5))
+x  = np.arange(2)
+w  = 0.30
+grp_labels = ["Baseline\n(port 1883, allow_anonymous=true)",
+               "Secure\n(port 8883, TLS 1.3 + ACL + heslo)"]
 
-ymax = max(max(vals) * 1.4, 1.5)
-ax.set_ylim(0, ymax)
-ax.set_title("P1 – MQTT: Uspesne neautorizovane PUBLISH operacie\n(Baseline vs. Zabezpecena konfiguracia)")
-ax.set_ylabel("Pocet pokusov / KPI hodnota")
-ax.legend(handles=[
-    mpatches.Patch(color=C_BASE, label="Baseline – bez TLS, bez ACL"),
-    mpatches.Patch(color=C_SEC,  label="Secure – TLS 1.3 + ACL + heslo"),
-], fontsize=9)
-fig.text(0.5, -0.03, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
-plt.tight_layout()
-out1 = FIGURES_DIR / "fig1_p1_mqtt_kpi.png"
-plt.savefig(out1)
-plt.close()
-print(f"[GRAF] {out1}", file=sys.stderr)
+bb = ax.bar(x - w/2, [b_success, s_success], w, color=C_BASE, edgecolor="white", linewidth=1.5,
+            label="Uspesne (utok presiel)")
+gb = ax.bar(x + w/2, [b_denied,  s_denied],  w, color=C_SEC,  edgecolor="white", linewidth=1.5,
+            label="Odmietnutie (utok zablokovala mitigacia)")
 
-# ── Graf 2: P2 CoAP – viaceré metriky ────────────────────────────────────────
-coap_metrics = [
-    ("P2_coap_plain_gets",    "coap-baseline", "coap-secure",  "Plain GETs\n(bez DTLS)"),
-    ("P2_coap_plain_blocked", "coap-baseline", "coap-secure",  "Plain port\nzablokovany"),
-    ("P2_coap_dtls_failures", "coap-baseline", "coap-secure",  "DTLS chybny\nPSK"),
-    ("P2_coap_dtls_ok",       "coap-baseline", "coap-secure",  "DTLS platny\nPSK"),
-]
-metric_labels  = [m[3] for m in coap_metrics]
-baseline_vals  = [get_avg(m[0], m[1]) or 0 for m in coap_metrics]
-secure_vals    = [get_avg(m[0], m[2]) or 0 for m in coap_metrics]
+ymax1 = max(b_success, s_success, b_denied, s_denied, 1) * 1.55
+ax.set_ylim(0, ymax1)
 
-fig, ax = plt.subplots(figsize=(10, 5))
-x = np.arange(len(metric_labels))
-w = 0.35
-bars_b = ax.bar(x - w/2, baseline_vals, w, label="Baseline", color=C_BASE, edgecolor="white")
-bars_s = ax.bar(x + w/2, secure_vals,   w, label="Secure (DTLS-PSK + iptables)", color=C_SEC, edgecolor="white")
-ymax2 = max(max(baseline_vals + secure_vals) * 1.4, 1.5)
-ax.set_ylim(0, ymax2)
-for bar, val in zip(bars_b, baseline_vals):
-    if val > 0:
-        ax.text(bar.get_x() + bar.get_width()/2, val + ymax2*0.02,
-                fmt(val), ha="center", va="bottom", fontsize=10, fontweight="bold", color=C_BASE)
-for bar, val in zip(bars_s, secure_vals):
-    if val > 0:
-        ax.text(bar.get_x() + bar.get_width()/2, val + ymax2*0.02,
-                fmt(val), ha="center", va="bottom", fontsize=10, fontweight="bold", color=C_SEC)
+for bar, val, clr in [(bb[0], b_success, C_BASE), (gb[0], b_denied,  C_SEC),
+                       (bb[1], s_success, C_BASE), (gb[1], s_denied,  C_SEC)]:
+    bar_label(ax, bar, val, ymax1, color=clr)
+
 ax.set_xticks(x)
-ax.set_xticklabels(metric_labels)
-ax.set_title("P2 – CoAP: Vysledky merani pre plaintext a DTLS-PSK scenare\n(Baseline vs. Zabezpecena konfiguracia)")
-ax.set_ylabel("Pocet pokusov / KPI hodnota (priemer)")
-ax.legend(fontsize=9)
-fig.text(0.5, -0.03, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
+ax.set_xticklabels(grp_labels, fontsize=10)
+ax.set_ylabel("Pocet pokusov (z celkovych 30)")
+ax.set_title("P1 – MQTT: Vysledok neautorizovanych PUBLISH pokusov\n"
+             "(Baseline vs. Zabezpecena konfiguracia)")
+ax.legend(fontsize=9, loc="upper center")
+fig.text(0.5, -0.04, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
 plt.tight_layout()
-out2 = FIGURES_DIR / "fig2_p2_coap_kpi.png"
-plt.savefig(out2)
+plt.savefig(FIGURES_DIR / "fig1_p1_mqtt_kpi.png")
 plt.close()
-print(f"[GRAF] {out2}", file=sys.stderr)
+print(f"[GRAF] {FIGURES_DIR}/fig1_p1_mqtt_kpi.png", file=sys.stderr)
 
-# ── Graf 3: P3 OTA ────────────────────────────────────────────────────────────
+# ── Graf 2: P2 CoAP – 2×2 subploty, kazdy s vlastnou osou Y ─────────────────
+#   Kazda metrika ma vlastny subplot → zelene stlpce su vzdy viditelne.
+coap_sub = [
+    ("P2_coap_plain_gets",
+     "Plaintext GET poziadavky prijate\n(uspesny pristup bez DTLS – port 5683)",
+     C_BASE, C_BASE,   # baseline=red(bad), secure=red ale 0 = prekazano
+     False),           # secure je "zlounitelnost ocakavana 0"
+    ("P2_coap_plain_blocked",
+     "Plaintext port zablokovany\n(iptables DROP na porte 5683)",
+     C_GRAY, C_SEC,    # baseline=N/A, secure=green(good)
+     True),
+    ("P2_coap_dtls_failures",
+     "DTLS handshake odmietnuty\n(nespravny PSK – bezpecnostna ochrana)",
+     C_GRAY, C_SEC,
+     True),
+    ("P2_coap_dtls_ok",
+     "DTLS handshake uspesny\n(spravny PSK – sluzba funguje)",
+     C_GRAY, C_SEC,
+     True),
+]
+
+fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+fig.suptitle("P2 – CoAP: Merania pre plaintext a DTLS-PSK scenare\n"
+             "(Baseline vs. Zabezpecena konfiguracia – DTLS-PSK + iptables)",
+             fontsize=13, fontweight="bold")
+
+for ax_c, (kpi, title, bc, sc, sec_is_good) in zip(axes.flat, coap_sub):
+    bv = get_avg(kpi, "coap-baseline") or 0
+    sv = get_avg(kpi, "coap-secure")   or 0
+    ymx = max(bv, sv, 1) * 1.55
+
+    br_b = ax_c.bar(["Baseline"], [bv], color=bc, edgecolor="white", linewidth=1.5, width=0.4)
+    br_s = ax_c.bar(["Secure"],   [sv], color=sc, edgecolor="white", linewidth=1.5, width=0.4)
+    ax_c.set_ylim(0, ymx)
+
+    # Anotacie – vzdy zobraz hodnotu, aj pre 0
+    bar_label(ax_c, br_b[0], bv, ymx,
+              extra="" if bv > 0 else " (N/A)" if bc == C_GRAY else " (bez ochrany)",
+              color=bc if bc != C_GRAY else "#555")
+    bar_label(ax_c, br_s[0], sv, ymx,
+              extra=" (OK)" if (sec_is_good and sv > 0) else " (zranitelnost!)" if (sec_is_good and sv == 0 and kpi == "P2_coap_dtls_ok") else "",
+              color=sc)
+
+    ax_c.set_title(title, fontsize=10)
+    ax_c.set_ylabel("Hodnota KPI (priemer)")
+    ax_c.grid(True, axis="y", alpha=0.35, linestyle="--")
+    ax_c.spines["top"].set_visible(False)
+    ax_c.spines["right"].set_visible(False)
+
+fig.text(0.5, -0.01, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
+plt.tight_layout()
+plt.savefig(FIGURES_DIR / "fig2_p2_coap_kpi.png", bbox_inches="tight")
+plt.close()
+print(f"[GRAF] {FIGURES_DIR}/fig2_p2_coap_kpi.png", file=sys.stderr)
+
+# ── Graf 3: P3 OTA – 2 skupiny (aplikovany vs. zablokovany) ─────────────────
+#   Skupiny: "Skodlivy firmver APLIKOVANY" a "Skodlivy firmver ZABLOKOVANY"
+#   Kazda skupina ma 2 stlpce (Baseline=red/gray, Secure=red/green).
 b_applied = get_avg("P3_ota_evil_applied", "ota-baseline") or 0
 s_applied = get_avg("P3_ota_evil_applied", "ota-secure")   or 0
 b_blocked = get_avg("P3_ota_evil_blocked", "ota-baseline") or 0
 s_blocked = get_avg("P3_ota_evil_blocked", "ota-secure")   or 0
 
-fig, ax = plt.subplots(figsize=(8, 4.5))
+fig, ax = plt.subplots(figsize=(9, 5))
 x = np.arange(2)
-w = 0.3
-b_a = ax.bar(x[0] - w/2, b_applied, w, color=C_BASE, label="Evil firmware APLIKOVANY",  edgecolor="white")
-b_b = ax.bar(x[0] + w/2, b_blocked, w, color=C_SEC,  label="Evil firmware ZABLOKOVANY", edgecolor="white")
-s_a = ax.bar(x[1] - w/2, s_applied, w, color=C_BASE, edgecolor="white")
-s_b = ax.bar(x[1] + w/2, s_blocked, w, color=C_SEC,  edgecolor="white")
-ymax3 = max(b_applied, b_blocked, s_applied, s_blocked, 1) * 1.4
-ax.set_ylim(0, ymax3)
-for bar, val in [(b_a[0], b_applied), (b_b[0], b_blocked), (s_a[0], s_applied), (s_b[0], s_blocked)]:
-    if val > 0:
-        ax.text(bar.get_x() + bar.get_width()/2, val + ymax3*0.02,
-                fmt(val), ha="center", va="bottom", fontsize=11, fontweight="bold")
-ax.set_xticks(x)
-ax.set_xticklabels(["Baseline\n(bez podpisu)", "Secure\n(minisign Ed25519)"])
-ax.set_title("P3 – OTA: Aplikacia skodliveho firmveru\n(Baseline vs. Zabezpecena konfiguracia)")
-ax.set_ylabel("KPI hodnota (priemer)")
-ax.legend(fontsize=9)
-fig.text(0.5, -0.03, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
-plt.tight_layout()
-out3 = FIGURES_DIR / "fig3_p3_ota_kpi.png"
-plt.savefig(out3)
-plt.close()
-print(f"[GRAF] {out3}", file=sys.stderr)
+w = 0.28
 
-# ── Graf 4: CVSS v4.0 porovnanie ─────────────────────────────────────────────
+# Skupina 1: firmver APLIKOVANY (Baseline=red, Secure=green ale 0)
+ba1 = ax.bar(x[0] - w/2, b_applied, w, color=C_BASE, edgecolor="white", linewidth=1.5,
+             label="Baseline")
+sa1 = ax.bar(x[0] + w/2, s_applied, w, color=C_SEC,  edgecolor="white", linewidth=1.5,
+             label="Secure (minisign Ed25519)")
+# Skupina 2: firmver ZABLOKOVANY (Baseline=gray 0, Secure=green)
+ba2 = ax.bar(x[1] - w/2, b_blocked, w, color=C_GRAY, edgecolor="white", linewidth=1.5)
+sa2 = ax.bar(x[1] + w/2, s_blocked, w, color=C_SEC,  edgecolor="white", linewidth=1.5)
+
+ymax3 = max(b_applied, s_applied, b_blocked, s_blocked, 1) * 1.65
+ax.set_ylim(0, ymax3)
+
+bar_label(ax, ba1[0], b_applied, ymax3, color=C_BASE)
+bar_label(ax, sa1[0], s_applied, ymax3, extra=" (zablokovany!)" if s_applied == 0 else "", color=C_SEC)
+bar_label(ax, ba2[0], b_blocked, ymax3, extra=" (N/A)" if b_blocked == 0 else "", color="#555")
+bar_label(ax, sa2[0], s_blocked, ymax3, extra=" (OK)" if s_blocked > 0 else "", color=C_SEC)
+
+ax.set_xticks(x)
+ax.set_xticklabels(["Skodlivy firmver\nAPLIKOVANY\n(zranitelnost)",
+                     "Skodlivy firmver\nZABLOKOVANY\n(ochrana)"], fontsize=10)
+ax.set_ylabel("KPI hodnota (priemer replikacii)")
+ax.set_title("P3 – OTA: Utok podvrhnutym firmverom\n"
+             "(Baseline vs. Zabezpecena konfiguracia – minisign Ed25519)")
+ax.legend(fontsize=9)
+fig.text(0.5, -0.04, SOURCE, ha="center", fontsize=8, style="italic", color="#555")
+plt.tight_layout()
+plt.savefig(FIGURES_DIR / "fig3_p3_ota_kpi.png")
+plt.close()
+print(f"[GRAF] {FIGURES_DIR}/fig3_p3_ota_kpi.png", file=sys.stderr)
+
+# ── Graf 4: CVSS v4.0 – skupinovy stlpcovy graf ──────────────────────────────
 fig, ax = plt.subplots(figsize=(9, 5.5))
-protocols   = ["P1 – MQTT\n(neautorizovany pristup)", "P2 – CoAP\n(plaintext bez DTLS)", "P3 – OTA\n(nepodpisany firmver)"]
+protocols   = ["P1 – MQTT\n(neautorizovany pristup)",
+               "P2 – CoAP\n(plaintext bez DTLS)",
+               "P3 – OTA\n(nepodpisany firmver)"]
 # CVSS v4.0 pred mitigaciou (overene kalkulatorom first.org/cvss/calculator/4.0):
 # P1 MQTT  9.3 – AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
 # P2 CoAP  5.3 – AV:A/AC:L/AT:N/PR:N/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N
 # P3 OTA   9.2 – AV:N/AC:H/AT:P/PR:N/UI:N/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
 cvss_before = [9.3, 5.3, 9.2]
-# Rezidualne skore po mitigacii (nie nula – mitigacia redukuje, neeleminuje riziko):
-#   P1 MQTT  2.1 – brute-force hesla (AC:H/AT:P) / DoS TLS handshake flood
-#   P2 CoAP  3.1 – race condition iptables + UDP amplifikacia
-#   P3 OTA   2.1 – rollback attack (deploy starsi validne podpisany firmver)
+# Rezidualne skore po mitigacii – nie nula (mitigacia redukuje, nie eliminuje riziko):
+#   P1 MQTT  2.1 – brute-force hesla (AC:H/AT:P) / DoS TLS handshake flood (VA:L)
+#   P2 CoAP  3.1 – race condition iptables (0–3/10 pokusov preniklo empiricky) + UDP amplifikacia
+#   P3 OTA   2.1 – rollback attack (deploy starsi validne podpisany firmver; chyba version-pinning)
 cvss_after  = [2.1, 3.1, 2.1]
 x = np.arange(len(protocols))
 w = 0.32
-b_bars = ax.bar(x - w/2, cvss_before, w, label="Pred mitigaciou (Baseline)", color=C_BASE, edgecolor="white", zorder=3)
-s_bars = ax.bar(x + w/2, cvss_after,  w, label="Po mitigacii (Secure)",      color=C_SEC,  edgecolor="white", zorder=3)
+b_bars = ax.bar(x - w/2, cvss_before, w, color=C_BASE, edgecolor="white", linewidth=1.5,
+                label="Pred mitigaciou (Baseline)", zorder=3)
+s_bars = ax.bar(x + w/2, cvss_after,  w, color=C_SEC,  edgecolor="white", linewidth=1.5,
+                label="Po mitigacii (Secure)", zorder=3)
+
 for bar, val in zip(b_bars, cvss_before):
     ax.text(bar.get_x() + bar.get_width()/2, val + 0.15, f"{val}",
             ha="center", va="bottom", fontsize=11, fontweight="bold", color=C_BASE)
-# Severity bands
-ax.axhspan(9.0, 10.0, alpha=0.07, color="#C0392B", zorder=0)
-ax.axhspan(7.0,  9.0, alpha=0.06, color="#E67E22", zorder=0)
+for bar, val in zip(s_bars, cvss_after):
+    ax.text(bar.get_x() + bar.get_width()/2, val + 0.15, f"{val}",
+            ha="center", va="bottom", fontsize=10, fontweight="bold", color=C_SEC)
+
+# Pasma zavaznosti
+ax.axhspan(9.0, 10.0, alpha=0.08, color="#C0392B", zorder=0)
+ax.axhspan(7.0,  9.0, alpha=0.07, color="#E67E22", zorder=0)
 ax.axhspan(4.0,  7.0, alpha=0.05, color="#F1C40F", zorder=0)
-ax.axhspan(0.0,  4.0, alpha=0.04, color="#27AE60", zorder=0)
+ax.axhspan(0.0,  4.0, alpha=0.05, color="#27AE60", zorder=0)
 tx = len(protocols) - 0.05
-ax.text(tx, 9.5, "Kriticka", va="center", fontsize=8, color="#C0392B", style="italic")
-ax.text(tx, 8.0, "Vysoka",   va="center", fontsize=8, color="#E67E22", style="italic")
-ax.text(tx, 5.5, "Stredna",  va="center", fontsize=8, color="#B7950B", style="italic")
-ax.text(tx, 2.0, "Nizka",    va="center", fontsize=8, color="#27AE60", style="italic")
+for ypos, lbl, clr in [(9.5,"Kriticka","#C0392B"),(8.0,"Vysoka","#E67E22"),
+                        (5.5,"Stredna","#B7950B"),(2.0,"Nizka","#27AE60")]:
+    ax.text(tx, ypos, lbl, va="center", fontsize=8, color=clr, style="italic")
+
 ax.set_xlim(-0.55, len(protocols) + 0.35)
 ax.set_ylim(0, 10.8)
 ax.set_yticks(np.arange(0, 11, 1))
 ax.set_xticks(x)
 ax.set_xticklabels(protocols)
-ax.set_title("Porovnanie CVSS v4.0 Base skore – Pred a Po aplikacii mitigacii")
+ax.set_title("Porovnanie CVSS v4.0 Base skore\nPred a po aplikacii mitigacii")
 ax.set_ylabel("CVSS v4.0 Base skore (0.0 – 10.0)")
 ax.legend(fontsize=9, loc="upper right")
-fig.text(0.5, -0.03, "Zdroj: vlastne hodnotenie podla FIRST CVSS v4.0 (Klopček, 2025)",
+fig.text(0.5, -0.03, "Zdroj: vlastne hodnotenie podla FIRST CVSS v4.0 (Klopecek, 2025)",
          ha="center", fontsize=8, style="italic", color="#555")
 plt.tight_layout()
-out4 = FIGURES_DIR / "fig4_cvss_scores.png"
-plt.savefig(out4)
+plt.savefig(FIGURES_DIR / "fig4_cvss_scores.png")
 plt.close()
-print(f"[GRAF] {out4}", file=sys.stderr)
+print(f"[GRAF] {FIGURES_DIR}/fig4_cvss_scores.png", file=sys.stderr)
 
-# ── Graf 5: CIA triada – 3 grafy vedla seba ───────────────────────────────────
-fig, axes = plt.subplots(1, 3, figsize=(14, 5))
-cia_labels = ["C\nDovernost", "I\nIntegrita", "A\nDostupnost"]
-# Hodnoty: 0=Ziadny, 1=Nizky, 2=Stredny, 3=Vysoky
-before_cia = {
-    "P1 - MQTT": [3, 2, 2],
-    "P2 - CoAP": [3, 2, 1],
-    "P3 - OTA":  [1, 3, 2],
-}
-ylabels = {0: "Ziadny", 1: "Nizky", 2: "Stredny", 3: "Vysoky"}
-for idx, (prot, ax_c) in enumerate(zip(list(before_cia.keys()), axes)):
-    xp = np.arange(3)
-    bv = before_cia[prot]
-    ax_c.bar(xp - 0.2, bv, 0.35, color=C_BASE, label="Baseline", edgecolor="white")
-    ax_c.bar(xp + 0.2, [0,0,0], 0.35, color=C_SEC, label="Secure", edgecolor="white")
-    ax_c.set_ylim(0, 3.8)
-    ax_c.set_yticks([0, 1, 2, 3])
-    ax_c.set_yticklabels([ylabels[i] for i in range(4)], fontsize=8)
-    ax_c.set_xticks(xp)
-    ax_c.set_xticklabels(cia_labels, fontsize=9)
-    ax_c.set_title(prot, fontweight="bold", fontsize=11)
-    ax_c.grid(True, axis="y", alpha=0.3, linestyle="--")
-    ax_c.spines["top"].set_visible(False)
-    ax_c.spines["right"].set_visible(False)
-    if idx == 0:
-        ax_c.legend(fontsize=8)
-fig.suptitle("Dopad na CIA triadu – Pred a Po mitigaciach (pre kazdy protokol)",
-             fontsize=13, fontweight="bold")
-fig.text(0.5, -0.01, "Zdroj: vlastne hodnotenie (Klopček, 2025)", ha="center", fontsize=8, style="italic", color="#555")
+# ── Graf 5: CIA triada – HEATMAPA (namiesto stlpcov so 0) ────────────────────
+#   Heatmapa je najvhodnejsim typom grafu pre kategoricke urovne dopadu.
+#   Riadky: C, I, A | Stlpce: kazdy protokol pred/po mitigacii
+#   Farba bunky: 0=svetlozelena, 1=zlta, 2=oranzova, 3=cervena
+
+impact_txt = {0: "Ziadny", 1: "Nizky", 2: "Stredny", 3: "Vysoky"}
+
+# Matica: [C, I, A] pre [P1_pred, P1_po, P2_pred, P2_po, P3_pred, P3_po]
+# Uroven dopadu (0=Ziadny, 1=Nizky, 2=Stredny, 3=Vysoky)
+# Stlpce: [P1_pred, P1_po, P2_pred, P2_po, P3_pred, P3_po]
+# P1 po mitigacii: Low – brute-force / DoS TLS flood (nie None, len redukcia)
+# P2 po mitigacii: Low – race condition iptables + UDP amplifikacia
+# P3 po mitigacii: I=Low (rollback), C/A=None (OTA neovplyvnuje data/dostupnost)
+cia_matrix = np.array([
+    [3, 1,  1, 1,  3, 0],   # Dovernost (C)  P2: VC:L→1; P3: VC:H→3
+    [2, 1,  1, 1,  3, 1],   # Integrita (I)  P2: VI:L→1
+    [1, 1,  1, 1,  1, 0],   # Dostupnost (A) P1: VA:L→1; P2: VA:L→1; P3: VA:L→1
+], dtype=float)
+
+col_labels = ["P1\npred", "P1\npo", "P2\npred", "P2\npo", "P3\npred", "P3\npo"]
+row_labels  = ["Dovernost (C)", "Integrita (I)", "Dostupnost (A)"]
+
+# Vlastna farebna mapa: zelena → zlta → oranzova → cervena
+cmap_cia = LinearSegmentedColormap.from_list(
+    "cia_impact", ["#D5F5E3", "#F9E79F", "#F0B27A", "#EC7063"], N=256)
+
+fig, ax = plt.subplots(figsize=(13, 4.5))
+im = ax.imshow(cia_matrix, cmap=cmap_cia, vmin=0, vmax=3, aspect="auto")
+
+ax.set_xticks(range(len(col_labels)))
+ax.set_yticks(range(len(row_labels)))
+ax.set_xticklabels(col_labels, fontsize=11)
+ax.set_yticklabels(row_labels, fontsize=11)
+
+# Mriezka
+ax.set_xticks(np.arange(len(col_labels)+1) - 0.5, minor=True)
+ax.set_yticks(np.arange(len(row_labels)+1) - 0.5, minor=True)
+ax.grid(which="minor", color="white", linewidth=2.5)
+ax.tick_params(which="minor", bottom=False, left=False)
+
+# Text v bunkach
+for i in range(3):
+    for j in range(6):
+        v = int(cia_matrix[i, j])
+        txt_clr = "white" if v == 3 else "black"
+        ax.text(j, i, impact_txt[v], ha="center", va="center",
+                fontsize=11, fontweight="bold", color=txt_clr)
+
+# Zvyraznenie skupin (vertikalne ciare medzi protokolmi)
+for xp in [1.5, 3.5]:
+    ax.axvline(x=xp, color="white", linewidth=4)
+
+# Nazvy skupin (P1, P2, P3) nad stlpcami
+for gx, lbl in [(0.5, "P1 – MQTT"), (2.5, "P2 – CoAP"), (4.5, "P3 – OTA")]:
+    ax.annotate(lbl, xy=(gx, -0.5), xycoords="data",
+                ha="center", va="bottom", fontsize=11, fontweight="bold",
+                annotation_clip=False)
+
+# Farebna legenda (colorbar)
+cbar = plt.colorbar(im, ax=ax, pad=0.02, fraction=0.03, ticks=[0, 1, 2, 3])
+cbar.ax.set_yticklabels(
+    ["Ziadny (0)", "Nizky (1)", "Stredny (2)", "Vysoky (3)"], fontsize=9)
+cbar.set_label("Uroven dopadu", fontsize=10)
+
+ax.set_title("Dopad na CIA triadu – Pred a po aplikacii mitigacii",
+             fontsize=13, fontweight="bold", pad=28)
+for sp in ax.spines.values():
+    sp.set_visible(False)
+ax.grid(False, which="major")
+
+fig.text(0.5, -0.06, "Zdroj: vlastne hodnotenie (Klopecek, 2025)",
+         ha="center", fontsize=8, style="italic", color="#555")
 plt.tight_layout()
-out5 = FIGURES_DIR / "fig5_cia_impact.png"
-plt.savefig(out5, bbox_inches="tight")
+plt.savefig(FIGURES_DIR / "fig5_cia_impact.png", bbox_inches="tight")
 plt.close()
-print(f"[GRAF] {out5}", file=sys.stderr)
+print(f"[GRAF] {FIGURES_DIR}/fig5_cia_impact.png", file=sys.stderr)
 
 print(f"\n[GRAFY] Vsetky grafy ulozene do: {FIGURES_DIR}", file=sys.stderr)
