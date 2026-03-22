@@ -7,6 +7,8 @@ RUN_ID=$RUN_ID
 # MQTT (secure profil)
 MQTT_USER=device01
 MQTT_PASS=device01pass
+MQTT_CTRL_USER=controller01
+MQTT_CTRL_PASS=controller01pass
 
 # CoAP DTLS PSK (secure profil)
 COAP_PSK_IDENTITY=device01

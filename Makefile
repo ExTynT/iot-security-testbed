@@ -4,6 +4,12 @@ MQTT_S  = -f docker-compose.yml -f docker-compose.mqtt-secure.yml
 COAP_S  = -f docker-compose.yml -f docker-compose.coap-secure.yml
 OTA_S   = -f docker-compose.yml -f docker-compose.ota-secure.yml
 
+ifeq ($(OS),Windows_NT)
+BASH ?= "C:/Program Files/Git/bin/bash.exe"
+else
+BASH ?= bash
+endif
+
 # Počet replikácií pre make replicate-<scenár> (predvolene 3)
 N ?= 3
 
@@ -11,7 +17,7 @@ N ?= 3
         mqtt-baseline mqtt-secure \
         coap-baseline coap-secure \
         ota-baseline ota-secure \
-        gen-passwd report analyze clean help \
+        gen-passwd report analyze analyze-final clean help \
         replicate-mqtt replicate-coap replicate-ota
 
 # ─── Build všetkých imidžov ───────────────────────────────────────────────────
@@ -23,7 +29,7 @@ mqtt-baseline:
 	scripts/new_run.sh
 	@echo "mqtt-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	$(COMPOSE) $(BASE) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh mqtt-baseline
 	bash scripts/mqtt_baseline_attack.sh
 	docker compose run --rm monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
@@ -35,7 +41,7 @@ mqtt-secure:
 	scripts/new_run.sh
 	@echo "mqtt-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	$(COMPOSE) $(MQTT_S) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh mqtt-secure
 	bash scripts/mqtt_secure_attack_unauth.sh
 	bash scripts/mqtt_secure_control_auth.sh
 	docker compose run --rm monitor-collector
@@ -47,7 +53,7 @@ coap-baseline:
 	scripts/new_run.sh
 	@echo "coap-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	$(COMPOSE) $(BASE) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh coap-baseline
 	bash scripts/coap_baseline_attack.sh
 	docker compose run --rm monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
@@ -58,7 +64,7 @@ coap-secure:
 	scripts/new_run.sh
 	@echo "coap-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	$(COMPOSE) $(COAP_S) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh coap-secure
 	bash scripts/coap_secure_attack_plain_should_fail.sh
 	bash scripts/coap_secure_attack_wrong_psk.sh
 	bash scripts/coap_secure_attack_ok_psk.sh
@@ -71,7 +77,7 @@ ota-baseline:
 	scripts/new_run.sh
 	@echo "ota-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	$(COMPOSE) $(BASE) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh ota-baseline
 	bash scripts/ota_attack_evil.sh
 	docker compose run --rm monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
@@ -81,12 +87,12 @@ ota-baseline:
 ota-secure: _ota-keys
 	scripts/new_run.sh
 	@echo "ota-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	@PUBKEY=$$(sed -n '2p' configs/ota/minisign.pub); \
-	sed -i "s|^MINISIGN_PUBKEY=.*|MINISIGN_PUBKEY=$$PUBKEY|" .env
+	bash scripts/set_minisign_pubkey.sh
 	$(COMPOSE) $(OTA_S) up -d
-	@sleep 5
+	bash scripts/wait_ready.sh ota-secure
 	$(COMPOSE) $(OTA_S) up -d --force-recreate dut
-	@sleep 3
+	bash scripts/wait_ready.sh ota-secure
+	bash scripts/ota_secure_control_signed.sh
 	bash scripts/ota_attack_evil.sh
 	docker compose run --rm monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
@@ -152,15 +158,10 @@ report:
 	@echo "Výsledky: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/results/"
 
 analyze:
-	@mkdir -p runs/figures
-	@MSYS_NO_PATHCONV=1 docker compose run --rm \
-	  -v "$$(cygpath -w $$(pwd))/runs:/runs" \
-	  --entrypoint python \
-	  monitor-collector /app/analyze_results.py \
-	  | tee runs/analysis.md
-	@echo ""
-	@echo "Analyza ulozena: runs/analysis.md"
-	@echo "Grafy ulozene:   runs/figures/"
+	$(BASH) -lc "cd . && ANALYZE_OUTPUT_PATH=runs/analysis.md ANALYZE_FIGURES_SUBDIR=figures bash scripts/analyze_runs.sh"
+
+analyze-final:
+	$(BASH) -lc "if [ -z '$(RUN_IDS)' ]; then echo 'Chyba: zadaj RUN_IDS=run1,run2,run3,...' && exit 1; fi; cd . && ANALYZE_OUTPUT_PATH=runs/analysis-final.md ANALYZE_FIGURES_SUBDIR=figures-final bash scripts/analyze_runs.sh '$(RUN_IDS)'"
 
 clean:
 	$(COMPOSE) $(BASE) down -v --remove-orphans || true

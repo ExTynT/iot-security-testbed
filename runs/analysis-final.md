@@ -2,68 +2,18 @@
 
 ## 0. Dataset scope
 
-Analyza bola vygenerovana nad vsetkymi dostupnymi behov v `runs/`.
+Analyza bola vygenerovana nad explicitne zvolenou finalnou mnozinou behov.
 
-Figury boli ulozene do: **runs/figures/**
+Vybrate run IDs: **20260322-161426, 20260322-161440, 20260322-161453, 20260322-161510, 20260322-161634, 20260322-161643**
+
+Figury boli ulozene do: **runs/figures-final/**
 
 ## 1. Prehlad runs
 
-Celkovy pocet behov: **58**
+Celkovy pocet behov: **6**
 
 | Run ID | Scenar |
 |--------|--------|
-| 20260302-152127 | mqtt-baseline |
-| 20260302-152145 | mqtt-baseline |
-| 20260302-152202 | mqtt-baseline |
-| 20260302-152219 | mqtt-secure |
-| 20260302-152244 | mqtt-secure |
-| 20260302-152309 | mqtt-secure |
-| 20260302-152333 | coap-baseline |
-| 20260302-152348 | coap-baseline |
-| 20260302-152402 | coap-baseline |
-| 20260302-152415 | coap-secure |
-| 20260302-152659 | coap-secure |
-| 20260302-152942 | coap-secure |
-| 20260302-153223 | ota-baseline |
-| 20260302-153243 | ota-baseline |
-| 20260302-153304 | ota-baseline |
-| 20260302-153324 | ota-secure |
-| 20260302-153350 | ota-secure |
-| 20260302-153417 | ota-secure |
-| 20260312-013251 | coap-baseline |
-| 20260312-013430 | mqtt-secure |
-| 20260312-013523 | coap-baseline |
-| 20260312-013554 | coap-secure |
-| 20260312-014007 | ota-baseline |
-| 20260312-014125 | ota-secure |
-| 20260322-135838 | mqtt-secure |
-| 20260322-135951 | coap-secure |
-| 20260322-141155 | mqtt-secure |
-| 20260322-141320 | mqtt-secure |
-| 20260322-141639 | mqtt-secure |
-| 20260322-141801 | mqtt-secure |
-| 20260322-141823 | coap-secure |
-| 20260322-142005 | coap-secure |
-| 20260322-143502 | coap-secure |
-| 20260322-144021 | coap-secure |
-| 20260322-144206 | ota-secure |
-| 20260322-144607 | ota-secure |
-| 20260322-150545 | coap-baseline |
-| 20260322-150634 | unknown |
-| 20260322-151040 | unknown |
-| 20260322-153904 | mqtt-baseline |
-| 20260322-153918 | mqtt-secure |
-| 20260322-153936 | coap-baseline |
-| 20260322-153949 | coap-secure |
-| 20260322-154111 | ota-baseline |
-| 20260322-154121 | ota-secure |
-| 20260322-155709 | mqtt-secure |
-| 20260322-155953 | ota-secure |
-| 20260322-155954 | mqtt-secure |
-| 20260322-160207 | mqtt-secure |
-| 20260322-160231 | ota-secure |
-| 20260322-160502 | mqtt-secure |
-| 20260322-160524 | ota-secure |
 | 20260322-161426 | mqtt-baseline |
 | 20260322-161440 | mqtt-secure |
 | 20260322-161453 | coap-baseline |
@@ -73,21 +23,21 @@ Celkovy pocet behov: **58**
 
 | Scenar | Pocet replikacii |
 |--------|-----------------|
-| P1 MQTT Baseline | 5 |
-| P1 MQTT Secure | 15 |
-| P2 CoAP Baseline | 8 |
-| P2 CoAP Secure | 11 |
-| P3 OTA Baseline | 6 |
-| P3 OTA Secure | 11 |
+| P1 MQTT Baseline | 1 |
+| P1 MQTT Secure | 1 |
+| P2 CoAP Baseline | 1 |
+| P2 CoAP Secure | 1 |
+| P3 OTA Baseline | 1 |
+| P3 OTA Secure | 1 |
 
 | Scenar | Behy s varovaniami |
 |--------|--------------------|
 | P1 MQTT Baseline | 0 |
-| P1 MQTT Secure | 3 |
+| P1 MQTT Secure | 0 |
 | P2 CoAP Baseline | 0 |
-| P2 CoAP Secure | 1 |
+| P2 CoAP Secure | 0 |
 | P3 OTA Baseline | 0 |
-| P3 OTA Secure | 1 |
+| P3 OTA Secure | 0 |
 
 ## 2. Before vs After - KPI tabulka
 
@@ -95,14 +45,14 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 | KPI | Baseline (priemer) | Secure (priemer) | Baseline OK? | Secure OK? |
 |---|---|---|---|---|
-| MQTT unauth denied | 0 (= 0 (utok uspel)) | 28 (> 0 (odmietnuty)) | OK | OK |
-| CoAP plain GETs | 28.8 (> 0 (plaintext citanie)) | 0 (= 0 (port blokovany)) | OK | OK |
-| CoAP plain port blocked | 0 (N/A) | 5.9 (> 0 (iptables OK)) | OK | OK |
-| CoAP DTLS failures (wrong PSK) | 0 (N/A) | 4.5 (> 0 (odmietnuty)) | OK | OK |
-| CoAP DTLS OK (spravny PSK) | 0 (N/A) | 0.9 (>= 1 (DTLS funguje)) | OK | FAIL |
-| OTA evil applied | 1 (> 0 (evil nasadeny)) | 0.1 (= 0 (zablokovany)) | OK | FAIL |
-| OTA evil blocked | 0 (= 0 (ziadna obrana)) | 0.9 (> 0 (podpis zamietol)) | OK | OK |
-| OTA signed update OK | 0 (N/A) | 0.5 (>= 1 (legitimna OTA funguje)) | OK | FAIL |
+| MQTT unauth denied | 0 (= 0 (utok uspel)) | 30 (> 0 (odmietnuty)) | OK | OK |
+| CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (port blokovany)) | OK | OK |
+| CoAP plain port blocked | 0 (N/A) | 3 (> 0 (iptables OK)) | OK | OK |
+| CoAP DTLS failures (wrong PSK) | 0 (N/A) | 5 (> 0 (odmietnuty)) | OK | OK |
+| CoAP DTLS OK (spravny PSK) | 0 (N/A) | 1 (>= 1 (DTLS funguje)) | OK | OK |
+| OTA evil applied | 1 (> 0 (evil nasadeny)) | 0 (= 0 (zablokovany)) | OK | OK |
+| OTA evil blocked | 0 (= 0 (ziadna obrana)) | 1 (> 0 (podpis zamietol)) | OK | OK |
+| OTA signed update OK | 0 (N/A) | 1 (>= 1 (legitimna OTA funguje)) | OK | OK |
 
 ## 3. Vizualizacia KPI (ASCII)
 
@@ -110,13 +60,13 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 ```
   Baseline [..............................]  0
-    Secure [##############################]  28
+    Secure [##############################]  30
 ```
 
 ### P2: CoAP plaintext GETs
 
 ```
-  Baseline [##############################]  28.8
+  Baseline [##############################]  10
     Secure [..............................]  0
 ```
 
@@ -124,21 +74,21 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 ```
   Baseline [##############################]  1
-    Secure [###...........................]  0.1
+    Secure [..............................]  0
 ```
 
 ### P3: OTA evil blocked
 
 ```
   Baseline [..............................]  0
-    Secure [###########################...]  0.9
+    Secure [##############################]  1
 ```
 
 ### P3: OTA signed update OK
 
 ```
   Baseline [..............................]  0
-    Secure [################..............]  0.5
+    Secure [##############################]  1
 ```
 
 ## 4. Interpretacia vysledkov
@@ -183,4 +133,4 @@ Skore je uvedene ako porovnanie stavu pred mitigaciou a po mitigacii.
 | OpenSSL (DTLS klient) | 3.x (Alpine 3.20) |
 
 ---
-*Generovane automaticky z 58 run(s) v priecinku `/runs`.*
+*Generovane automaticky z 6 explicitne zvolenych run(s) v priecinku `/runs` so scope `20260322-161426, 20260322-161440, 20260322-161453, 20260322-161510, 20260322-161634, 20260322-161643`.*

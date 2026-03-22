@@ -12,10 +12,15 @@ echo "=== CoAP SECURE – kontrolný beh (správny PSK) ==="
 echo ""
 RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
 LOGF="runs/${RUN_ID}/logs/attacks.log"
+OUTLOG="runs/${RUN_ID}/logs/coap_dtls_ok.log"
+
+: > "$OUTLOG"
 
 echo "[1] Legitímny klient DTLS connect (identity='$COAP_PSK_IDENTITY')..."
-if docker compose exec -T attacker \
-  coap-dtls-psk coap 5684 "$COAP_PSK_IDENTITY" "$COAP_PSK" 2>&1; then
+OUT=$(docker compose exec -T attacker \
+  coap-dtls-psk coap 5684 "$COAP_PSK_IDENTITY" "$COAP_PSK" 2>&1 || true)
+printf '%s\n' "$OUT" | tee -a "$OUTLOG"
+if echo "$OUT" | grep -q "CoAP response 2.05"; then
   echo ">>> USPECH – DTLS session nadviazaná, CoAP GET odpoveď prijatá"
   echo "P2_coap_dtls_ok 1" >> "$LOGF"
 else

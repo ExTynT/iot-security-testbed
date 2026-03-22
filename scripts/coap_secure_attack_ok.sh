@@ -1,17 +1,8 @@
 #!/usr/bin/env bash
-# CoAP Secure – legitímny klient so správnym PSK – očakávaný výsledok: USPECH
-# Spustiť po: docker compose -f docker-compose.yml -f docker-compose.coap-secure.yml up -d
+# Compatibility wrapper for the old script name.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Načítaj PSK z .env
-COAP_PSK="${COAP_PSK:-supersecretpsk}"
-
-echo "=== CoAP SECURE – legitímny klient (PSK=$COAP_PSK) ==="
-echo ""
-echo "[1] Legitímny DTLS connect so správnym PSK..."
-docker compose exec -T attacker \
-  coap-dtls-psk coap 5684 device01 "$COAP_PSK" \
-  && echo ">>> USPECH – DTLS session nadviazaná a CoAP GET odpoveď prijatá"
-echo ""
-echo "=== VYSLEDOK: USPECH (autorizovaný klient prešiel) ==="
+echo "[INFO] scripts/coap_secure_attack_ok.sh je legacy wrapper."
+echo "[INFO] Presmerovavam na scripts/coap_secure_attack_ok_psk.sh."
+exec bash scripts/coap_secure_attack_ok_psk.sh

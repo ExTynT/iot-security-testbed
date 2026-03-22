@@ -10,7 +10,10 @@ cd "$(dirname "$0")/.."
 
 RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
 LOGF="runs/${RUN_ID}/logs/attacks.log"
+OUTLOG="runs/${RUN_ID}/logs/coap_dtls_wrong_psk.log"
 TOTAL=5
+
+: > "$OUTLOG"
 
 echo "=== CoAP SECURE ATTACK – chybny PSK (${TOTAL} pokusov) ==="
 echo ""
@@ -18,17 +21,17 @@ echo "[1] Attacker skusa ${TOTAL}x DTLS connect so zlym PSK 'wrongpassword123'..
 
 # Sekvenčný batch v jedinom docker exec (eliminuje ~0.5s per-exec overhead)
 # Sekvenčné (nie paralelné) – DTLS UDP vyžaduje sekvenčné pokusy pre správne výsledky
-set +e
-RESULT=$(docker compose exec -T attacker sh -c '
-  failed=0
-  for i in $(seq 1 5); do
-    coap-dtls-psk coap 5684 device01 wrongpassword123 >/dev/null 2>&1 \
-      || failed=$((failed+1))
-  done
-  echo $failed
-' 2>/dev/null)
-set -e
-FAILED=${RESULT:-0}
+FAILED=0
+for i in $(seq 1 "${TOTAL}"); do
+  OUT=$(docker compose exec -T attacker \
+    coap-dtls-psk coap 5684 device01 wrongpassword123 2>&1 || true)
+  if echo "$OUT" | grep -qE "FAIL|failed|rejected|alert"; then
+    FAILED=$((FAILED+1))
+    printf 'FAIL %02d | %s\n' "$i" "$OUT" >> "$OUTLOG"
+  else
+    printf 'UNEXPECTED %02d | %s\n' "$i" "${OUT:-no_output}" >> "$OUTLOG"
+  fi
+done
 
 for i in $(seq 1 "${FAILED}"); do echo "P2_coap_dtls_failure 1" >> "$LOGF"; done
 echo ">>> ${FAILED}/${TOTAL} DTLS handshakov zlyhalo (KPI: P2_coap_dtls_failures=${FAILED})"

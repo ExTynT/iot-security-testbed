@@ -1,215 +1,249 @@
 # IoT Security Testbed
 
-Docker-based testbed pre demonštráciu bezpečnostných zraniteľností v IoT komunikačných protokoloch a efektívnosti mitigácií. Súčasť bakalárskej práce.
+Docker-based testbed pre bakalarsku pracu o bezpecnosti IoT komunikacie a OTA aktualizacii.
 
-## Čo testbed rieši
+## Co testbed overuje
 
-Tri protokoly, každý v dvoch konfiguráciách (A = zraniteľný baseline, B = mitigovaný secure):
+Tri oblasti, kazda v dvoch profiloch:
 
-| Protokol | Zraniteľnosť | Mitigácia | KPI |
-|----------|-------------|-----------|-----|
-| **P1 MQTT** | Broker bez TLS/auth na porte 1883 | TLS 8883 + ACL + heslo | `unauth_denied > 0` |
-| **P2 CoAP** | Plaintext UDP bez autentifikácie | DTLS/PSK na 5684 + iptables blok 5683 | `dtls_failures > 0` |
-| **P3 OTA** | Firmvér bez overenia podpisu | minisign Ed25519 pinovaný verejný kľúč | `evil_blocked > 0` |
+| Protokol | Baseline profil | Secure profil | Hlavny dokaz |
+|----------|-----------------|---------------|--------------|
+| P1 MQTT | broker bez TLS a bez autentifikacie na porte 1883 | TLS na 8883 + hesla + ACL | neautorizovany publish je odmietnuty a autorizovany controller funguje |
+| P2 CoAP | plaintext CoAP na 5683 bez autentifikacie | DTLS/PSK na 5684 + blokovanie 5683 | plaintext je blokovany, zly PSK zlyha, spravny PSK uspeje |
+| P3 OTA | OTA bez overenia podpisu | minisign overenie podpisu manifestu | podpisana oficialna aktualizacia uspeje, evil aktualizacia sa odmietne |
 
-## Požiadavky
+Testbed nedokazuje "uplnu bezpecnost IoT". Demonstruje ucinok konkretnych mitigacii na presne definovane neautorizovane operacie v kontrolovanom Docker prostredi.
 
-| Závislost | Verzia | Poznámka |
-|-----------|--------|----------|
-| Docker Engine | ≥ 24.0 | alebo Docker Desktop ≥ 4.25 |
-| Docker Compose | v2 (plugin) | príkaz `docker compose` (nie `docker-compose`) |
-| Bash | ≥ 4.0 | Git Bash / WSL2 na Windows |
-| GNU Make | ≥ 3.82 | (`make --version`) |
+## Poziadavky
 
-> **Windows**: Všetky príkazy spúšťaj cez **Git Bash** (nie PowerShell ani cmd).
-> minisign binárka je priložená v `tools/minisign/minisign-win64/`.
+| Zavislost | Poznamka |
+|-----------|----------|
+| Docker Engine + `docker compose` | povinne |
+| Git Bash alebo kompatibilny Bash | odporucane na Windows |
+| GNU Make | odporucane, ale existuju aj helper skripty v `scripts/` |
 
-## Verzie Docker imidžov
+> Na Windows je najcistejsi workflow cez Git Bash. Helper `.bat` skripty su kompatibilitna vrstva, nie hlavny referencny workflow.
+> Pri `make`, `run_case.sh` a `_run_all.sh` netreba rucne upravovat `.env`; helpery si ho vytvaraju same.
 
-| Komponent | Imidž / Verzia |
-|-----------|----------------|
-| MQTT broker | `eclipse-mosquitto:2.0.18` |
-| CoAP server | `alpine:3.20` + libcoap 4.3.5 (OpenSSL DTLS) |
-| OTA server (official) | `nginx:alpine` |
-| DUT (Device Under Test) | `python:3.12-alpine` + paho-mqtt + minisign |
-| Attacker | `alpine:3.20` + mosquitto-clients + vlastný DTLS klient |
-| Sniffer | `alpine:3.20` + tcpdump |
-| Monitor/Collector | `python:3.12-alpine` |
+## Struktura
 
-## Štruktúra projektu
-
-```
+```text
 iot-security-testbed/
-├── docker-compose.yml              # Základná topológia (baseline)
-├── docker-compose.mqtt-secure.yml  # Overlay: MQTT TLS+ACL
-├── docker-compose.coap-secure.yml  # Overlay: DTLS/PSK + iptables
-├── docker-compose.ota-secure.yml   # Overlay: minisign overenie
-├── Makefile                        # Ciele: scenáre, replikácie, analýza
-├── configs/
-│   ├── mqtt/baseline/              # mosquitto.conf (plaintext)
-│   ├── mqtt/secure/                # mosquitto.conf + certs + passwd + ACL
-│   ├── coap/                       # (prázdny, PSK v .env)
-│   └── ota/
-│       ├── repo/                   # Legitímny firmvér + manifest
-│       └── evil/                   # Evil firmvér + falošný podpis
-├── images/
-│   ├── attacker/                   # Dockerfile + coap_dtls_psk.c
-│   ├── coap-server/                # Dockerfile (libcoap 4.3.5 + iptables)
-│   ├── dut/                        # Dockerfile + dut.py
-│   ├── monitor-collector/          # Dockerfile + collector.py
-│   └── sniffer/                    # Dockerfile (tcpdump)
-├── scripts/
-│   ├── new_run.sh                  # Inicializuje nový run (RUN_ID, .env, adresáre)
-│   ├── mqtt_baseline_attack.sh
-│   ├── mqtt_secure_attack_unauth.sh
-│   ├── mqtt_secure_control_auth.sh
-│   ├── coap_baseline_attack.sh
-│   ├── coap_secure_attack_plain_should_fail.sh
-│   ├── coap_secure_attack_wrong_psk.sh
-│   ├── coap_secure_attack_ok_psk.sh
-│   ├── ota_attack_evil.sh
-│   ├── analyze_results.py          # Agregovaná analýza všetkých runs/
-│   └── gen_mqtt_passwd.sh
-└── runs/                           # Výstupy (gitignored, len .gitkeep)
-    └── <RUN_ID>/
-        ├── logs/    # *.log zo všetkých kontajnerov
-        ├── pcap/    # *.pcap (tcpdump)
-        ├── results/ # summary.json, report.md
-        └── state/   # scenario.txt, version.txt
+|-- docker-compose.yml
+|-- docker-compose.mqtt-secure.yml
+|-- docker-compose.coap-secure.yml
+|-- docker-compose.ota-secure.yml
+|-- Makefile
+|-- configs/
+|   |-- mqtt/
+|   |-- ota/
+|-- images/
+|   |-- attacker/
+|   |-- coap-server/
+|   |-- dut/
+|   |-- monitor-collector/
+|   `-- sniffer/
+|-- scripts/
+|   |-- new_run.sh
+|   |-- run_case.sh
+|   |-- wait_ready.sh
+|   |-- set_minisign_pubkey.sh
+|   |-- analyze_runs.sh
+|   |-- mqtt_*.sh
+|   |-- coap_*.sh
+|   `-- ota_*.sh
+`-- runs/
 ```
 
-## Rýchly štart
+## Referencny workflow
 
-### 1. Zostav imidže (raz)
+### 1. Build
 
 ```bash
 cd iot-security-testbed
 make build
 ```
 
-### 2. Vygeneruj MQTT heslo (raz)
+Ak `make` nie je k dispozicii, overeny fallback v Git Bash je:
+
+```bash
+cd iot-security-testbed
+docker compose build
+```
+
+### 2. MQTT hesla
 
 ```bash
 make gen-passwd
 ```
 
-### 3. Spusti jednotlivé scenáre
+Fallback bez `make`:
 
 ```bash
-make mqtt-baseline    # P1: MQTT bez ochrán
-make mqtt-secure      # P1: MQTT TLS+ACL+heslo
-
-make coap-baseline    # P2: CoAP bez DTLS
-make coap-secure      # P2: CoAP DTLS/PSK + firewall
-
-make ota-baseline     # P3: OTA bez podpisu
-make ota-secure       # P3: OTA minisign
+bash scripts/gen_mqtt_passwd.sh
 ```
 
-Každý cieľ automaticky:
-1. Inicializuje nový `RUN_ID` a adresáre
-2. Spustí Docker stack
-3. Spustí útočné skripty
-4. Zberie logy a vygeneruje `summary.json` + `report.md`
-5. Zastaví stack
+Pri `bash scripts/run_case.sh mqtt-secure` a `bash scripts/_run_all.sh ...` sa `passwd` doplni automaticky, ak chyba.
 
-### 4. Replikácie (≥ 3 behy pre dôveryhodnosť)
+Generuje sa:
+
+- `device01` / `device01pass`
+- `controller01` / `controller01pass`
+
+### 3. Jednotlive scenare
 
 ```bash
-make replicate-mqtt N=3    # 3× mqtt-baseline + mqtt-secure
-make replicate-coap N=3    # 3× coap-baseline + coap-secure
-make replicate-ota  N=3    # 3× ota-baseline  + ota-secure
+make mqtt-baseline
+make mqtt-secure
 
-# alebo všetko naraz:
+make coap-baseline
+make coap-secure
+
+make ota-baseline
+make ota-secure
+```
+
+Fallback bez `make` pre jeden scenar:
+
+```bash
+bash scripts/run_case.sh mqtt-baseline
+bash scripts/run_case.sh mqtt-secure
+
+bash scripts/run_case.sh coap-baseline
+bash scripts/run_case.sh coap-secure
+
+bash scripts/run_case.sh ota-baseline
+bash scripts/run_case.sh ota-secure
+```
+
+Pri `ota-secure` helper automaticky:
+
+- vytvori novy `.env`,
+- doplni `MINISIGN_PUBKEY`,
+- a ak treba, vygeneruje aj minisign kluce a podpis manifestu.
+
+Kazdy scenar urobi:
+
+1. `new_run.sh`
+2. zapis `scenario.txt`
+3. `docker compose up -d`
+4. `wait_ready.sh`
+5. attack/control skripty
+6. collector
+7. `docker compose down --remove-orphans`
+
+### 4. Replikacie
+
+```bash
+make replicate-mqtt N=3
+make replicate-coap N=3
+make replicate-ota N=3
 make replicate-all N=3
 ```
 
-### 5. Agregovaná analýza výsledkov
+Ak nie je k dispozicii `make`, existuje fallback:
+
+```bash
+bash scripts/_run_all.sh 3
+```
+
+### 5. Agregovana analyza
 
 ```bash
 make analyze
-# → runs/analysis.md (Before/After tabuľka, ASCII grafy, CVSS)
 ```
 
-## Výsledky každého behu
+Fallback bez `make`:
 
-Po každom `make <scenár>`:
-
-```
-runs/<RUN_ID>/
-├── logs/mqtt.log          # Mosquitto server log
-├── logs/coap.log          # libcoap server log
-├── logs/dut.log           # DUT aplikačný log
-├── logs/attacks.log       # KPI markery z útočných skriptov
-├── pcap/mqtt.pcap         # Sieťová zachytávka MQTT
-├── pcap/coap.pcap         # Sieťová zachytávka CoAP
-├── pcap/ota.pcap          # HTTP OTA (official)
-├── pcap/ota_evil.pcap     # HTTP OTA (evil)
-├── results/summary.json   # Strojovo čitateľné KPI
-├── results/report.md      # Markdown správa
-└── state/scenario.txt     # Názov scenára
+```bash
+bash scripts/analyze_runs.sh
 ```
 
-### Príklad summary.json (coap-secure)
+Vystup:
 
-```json
-{
-  "scenario": "coap-secure",
-  "kpi": {
-    "P1_mqtt_unauth_denied":  0,
-    "P2_coap_plain_gets":     0,
-    "P2_coap_plain_blocked":  1,
-    "P2_coap_dtls_failures":  1,
-    "P2_coap_dtls_ok":        1,
-    "P3_ota_evil_applied":    0,
-    "P3_ota_evil_blocked":    0
-  }
-}
+- `runs/analysis.md`
+- `runs/figures/`
+
+Ak chces autoritativny finalny dataset pre text prace, pouzi explicitny vyber run IDs:
+
+```bash
+make analyze-final RUN_IDS=20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643
 ```
 
-## Technické detaily
+Fallback bez `make`:
 
-### MQTT Secure
-- Mosquitto 2.0.18 na porte 8883 s TLS (self-signed CA)
-- ACL: `device01` môže len `write telemetry/#` a `read cmd/#`
-- Plaintext port 1883 je v secure konfigurácii nedostupný
+```bash
+bash scripts/analyze_runs.sh 20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643
+```
 
-### CoAP Secure
-- libcoap 4.3.5 skompilovany s OpenSSL (DTLS/PSK), port 5684
-- iptables `DROP udp --dport 5683` vo vnútri kontajnera (cap_add: NET_ADMIN)
-- Vlastný DTLS klient `coap_dtls_psk.c` (OpenSSL priamo) – libcoap v4.3.5 má bug
-  v klientskom DTLS PSK (`SSL_set_psk_client_callback` nikdy nie je volaný)
+Vystup finalneho datasetu:
 
-### OTA Secure
-- minisign Ed25519 podpis manifestu (`manifest.json.minisig`)
-- DUT má pinovaný verejný kľúč cez `MINISIGN_PUBKEY` env premenná
-- Evil firmvér má falošný `.minisig` → overenie zlyhá
+- `runs/analysis-final.md`
+- `runs/figures-final/`
+
+`make analyze` nadalej agreguje vsetko v `runs/`. `make analyze-final` je urceny pre referencnu mnozinu behov, ktoru budes citovat vo vysledkoch a metodike.
+
+## Dolezite secure detaily
+
+### MQTT secure
+
+- Mosquitto pocuva na porte 8883.
+- Plaintext port 1883 je v secure profile nedostupny.
+- `device01` je konto DUT.
+- `controller01` je samostatne legitimne kontrolne konto pre dokaz, ze mitigacia nezrusila funkcnu komunikaciu.
+
+### CoAP secure
+
+- Port 5684 pouziva DTLS/PSK.
+- Port 5683 je v secure profile blokovany cez `iptables`.
+- Legitimitu secure profilu dokazuju tri oddelene artefakty:
+  - `coap_plain_probe.log`
+  - `coap_dtls_wrong_psk.log`
+  - `coap_dtls_ok.log`
+
+### OTA secure
+
+- `ota_secure_control_signed.sh` overuje, ze podpisana oficialna aktualizacia sa da aplikovat.
+- `ota_attack_evil.sh` overuje, ze evil aktualizacia sa po secure ochrane neaplikuje.
+- Nginx access logy sa ukladaju do:
+  - `logs/ota_access.log`
+  - `logs/ota_evil_access.log`
+
+## Artefakty behov
+
+Kazdy run uklada:
+
+- `logs/`
+- `pcap/`
+- `results/summary.json`
+- `results/report.md`
+- `state/scenario.txt`
+- `state/version.txt`
+
+Priklady overenych secure behov:
+
+- [runs/20260322-153918/results/summary.json](c:/Users/Ivan/Documents/BAKALARKA-REPOZITAR/iot-security-testbed/runs/20260322-153918/results/summary.json)
+- [runs/20260322-153949/results/summary.json](c:/Users/Ivan/Documents/BAKALARKA-REPOZITAR/iot-security-testbed/runs/20260322-153949/results/summary.json)
+- [runs/20260322-154121/results/summary.json](c:/Users/Ivan/Documents/BAKALARKA-REPOZITAR/iot-security-testbed/runs/20260322-154121/results/summary.json)
 
 ## Troubleshooting
 
-| Problém | Riešenie |
-|---------|---------|
-| `make mqtt-secure` zlyhá s "Chyba: spusti gen-passwd" | `make gen-passwd` |
-| `make ota-secure` zlyhá – chýba minisign.pub | Spustí sa automaticky, skontroluj `tools/minisign/` |
-| DTLS handshake vždy zlyhá | Skontroluj, či je imidž `coap-server` zostavený s OpenSSL: `make build` |
-| Port 5683 nie je blokovaný | Kontajner potrebuje `cap_add: NET_ADMIN` – skontroluj overlay |
-| OTA evil nie je blokovaný v secure | `MINISIGN_PUBKEY` musí byť nastavený pred štartom DUT |
-| `docker compose exec` chyba | Stack nie je spustený – spusti `make <scenár>` alebo `docker compose up -d` |
+| Problem | Riesenie |
+|---------|----------|
+| `mqtt-secure` zlyha na passwd | spusti `make gen-passwd` |
+| chces pustit len jeden scenar bez `make` | pouzi `bash scripts/run_case.sh <scenario>` |
+| `make` nie je nainstalovane | pouzi fallback prikazy uvedene vyssie |
+| `ota-secure` nema public key | pri `make ota-secure`, `run_case.sh ota-secure` a `_run_all.sh` sa doplni automaticky; manualny `set_minisign_pubkey.sh` je len nizkourovnovy helper |
+| CoAP secure visi dlho | pouzivaj aktualne skripty s `timeout`, nie stare helpery |
+| Stare skripty/poznamky ukazuju iny workflow | referencny workflow je README + Makefile + `wait_ready.sh` |
 
-## Reprodukovateľnosť (pre obhajobu)
+## Reprodukovatelnost
 
-Celý testbed je reprodukovateľný na ľubovoľnom stroji s Docker:
+Reprodukovatelnost je podporena:
 
-```bash
-git clone <repo>
-cd iot-security-testbed
-make build
-make gen-passwd
-make replicate-all N=3
-make analyze
-```
+- fixnou compose topologiou,
+- skriptovanym spustanim scenarov,
+- per-run ulozenim logov, PCAP a KPI,
+- oddelenim baseline a secure profilov.
 
-Výsledky budú v `runs/` a agregovaná správa v `runs/analysis.md`.
-
-> Verzie sú pinované v Dockerfiles (`FROM alpine:3.20`, `FROM python:3.12-alpine`,
-> `eclipse-mosquitto:2.0.18`). libcoap je stiahnutý ako tarball v4.3.5.
+Nie je to garantovana reprodukcia "na lubovolnom stroji bez rozdielu". Je to reprodukovatelny laboratorny testbed v ramci definovanych zavislosti a lokalneho Docker prostredia.

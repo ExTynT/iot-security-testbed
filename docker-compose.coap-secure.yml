@@ -9,4 +9,14 @@ services:
     cap_add:
       - NET_ADMIN
     # Port 5683 blokovaný firewallom; autentifikácia povinná len cez DTLS/PSK na 5684
-    command: ["sh", "-c", "iptables -I INPUT -p udp --dport 5683 -j DROP && echo 'Firewall: port 5683 BLOCKED' || echo 'Firewall: iptables nedostupny'; echo 'CoAP DTLS PSK: 5683=BLOCKED 5684=DTLS+PSK'; coap-server -A 0.0.0.0 -k ${COAP_PSK} -h ${COAP_HINT} -v 6 2>&1 | tee /logs/coap.log"]
+    command:
+      - sh
+      - -c
+      - |
+        {
+          iptables -I INPUT -p udp --dport 5683 -j DROP \
+            && echo 'Firewall: port 5683 BLOCKED' \
+            || echo 'Firewall: iptables nedostupny'
+          echo 'CoAP DTLS PSK: 5683=BLOCKED 5684=DTLS+PSK'
+          coap-server -A 0.0.0.0 -k "${COAP_PSK}" -h "${COAP_HINT}" -v 6
+        } 2>&1 | tee /logs/coap.log

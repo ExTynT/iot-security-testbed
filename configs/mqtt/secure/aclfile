@@ -1,3 +1,7 @@
 user device01
 topic write telemetry/#
 topic read  cmd/#
+
+user controller01
+topic read  telemetry/#
+topic write cmd/#

@@ -16,10 +16,11 @@ services:
     restart: unless-stopped
 
   ota:
-    image: nginx:alpine
+    image: nginx@sha256:f46cb72c7df02710e693e863a983ac42f6a9579058a59a35f1ae36c9958e4ce0
     networks: [iot_net]
     volumes:
       - ./configs/ota/repo:/usr/share/nginx/html:ro
+      - ./configs/ota/nginx-official.conf:/etc/nginx/conf.d/default.conf:ro
       - ./runs/${RUN_ID}/logs:/logs
     command: >
       sh -c "nginx -g 'daemon off;'"
@@ -41,10 +42,12 @@ services:
     restart: unless-stopped
 
   ota_evil:
-    image: nginx:alpine
+    image: nginx@sha256:f46cb72c7df02710e693e863a983ac42f6a9579058a59a35f1ae36c9958e4ce0
     networks: [iot_net]
     volumes:
       - ./configs/ota/evil:/usr/share/nginx/html:ro
+      - ./configs/ota/nginx-evil.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./runs/${RUN_ID}/logs:/logs
     restart: unless-stopped
 
   attacker:
