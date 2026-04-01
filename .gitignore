@@ -1,17 +1,30 @@
-# Thesis files
-Klopček-aplikacna*.docx
-*.docx
-THESIS_NOTES.md
-
-# Tools directory (local binaries)
-tools/
-
-# Docker
-.dockerignore
-
-# Environment files
+# Lokálne stavové súbory a pomocné exporty
 .env
 .env.local
+.env.*
+runs;C/
+lo_profile/
+pages/
+*.tmp
+
+# Python cache a build odpad
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.coverage
+coverage.xml
+
+# Thesis a interné poznámky
+THESIS_NOTES.md
+
+# Nástroje a lokálne binárky
+tools/
 
 # IDE
 .vscode/
@@ -24,22 +37,23 @@ tools/
 .DS_Store
 Thumbs.db
 
-# Certificates and keys (lab only - do not commit private keys)
+# Certifikáty, heslá a kľúče
 *.key
 *.srl
 *.csr
 configs/mqtt/secure/certs/
 configs/mqtt/secure/passwd
 
-# Run artifacts
-runs/20*/
-!runs/.gitkeep
-
-# CoAP PSK config
+# CoAP PSK konfigurácia
 configs/coap/*.env
 
-# OTA firmware binaries
+# OTA kľúče a generované firmvéry
 configs/ota/repo/*.bin
 configs/ota/*.pub
 configs/ota/*.key
 !configs/ota/repo/manifest.json
+
+# Nové timestampované runy sa nemajú commitovať automaticky.
+# Referenčné runy a agregované analýzy, ktoré sú už vo verziovaní, ostávajú zachované.
+runs/20*/
+!runs/.gitkeep
