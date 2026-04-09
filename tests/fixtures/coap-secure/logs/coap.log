@@ -1,0 +1,4 @@
+Firewall: port 5683 BLOCKED
+CoAP DTLS PSK: 5683=BLOCKED 5684=DTLS+PSK
+Mar 22 15:16:25.779 INFO *  172.19.0.2:5684 <-> 172.19.0.6:45394 (if2) DTLS: SSL3 alert read:warning:close notify
+Mar 22 15:16:25.779 INFO *  172.19.0.2:5684 <-> 172.19.0.6:45394 (if2) DTLS: SSL3 alert write:warning:close notify

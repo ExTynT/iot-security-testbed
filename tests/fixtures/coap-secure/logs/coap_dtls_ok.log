@@ -1,0 +1,4 @@
+[*] Connecting to coaps://coap:5684 (identity='device01') ...
+[OK]   DTLS handshake established – cipher: ECDHE-PSK-CHACHA20-POLY1305
+[OK]   CoAP response 2.05 (158 bytes)
+[OK]   Payload: </>;title="General Info";ct=0,</time>;if="clock";rt="ticks";title="Internal Clock";ct=0;obs,</async>;ct=0,</example_data>;title="Example Data";ct=0;obs

@@ -190,7 +190,7 @@ Každý beh vytvára samostatný priečinok `runs/<run_id>/` s jednotnou štrukt
 - `results/summary.json`
 - `results/report.md`
 - `state/scenario.txt`
-- `state/version.txt`
+- `state/version.json`
 
 Táto štruktúra je zámerná. Umožňuje spätne prepojiť interpretáciu výsledkov s konkrétnymi logmi, sieťovými stopami a stavovými údajmi.
 
@@ -249,6 +249,20 @@ iot-security-testbed/
 |   `-- ota_*.sh
 `-- runs/
 ```
+
+## Testovanie a CI
+
+Pre lokalnu regresnu kontrolu su pripravene tri uzke entrypointy:
+
+- `make lint` - spusti `ruff` len nad collectorom a testami
+- `make test` - spusti `pytest` nad golden fixtures pre `mqtt-secure`, `coap-secure` a `ota-secure`
+- `make smoke-ci` - zalozi novy baseline run, zdvihne testbed a pusti existujuci `scripts/smoke_test.sh`
+
+GitHub Actions workflow `.github/workflows/ci.yml` spusta presne tieto tri vrstvy:
+
+- lint
+- unit testy collectora
+- jeden smoke test nad existujucim shell skriptom
 
 ## Troubleshooting
 

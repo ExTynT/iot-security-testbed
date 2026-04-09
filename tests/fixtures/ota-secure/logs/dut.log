@@ -1,0 +1,11 @@
+/app/dut.py:112: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  client = mqtt.Client()
+MQTT connected rc= 0
+OTA: cmd/ota payload='http://ota' → použijem ako OTA_BASE
+Signature and comment signature verified
+Trusted comment: timestamp:1772404364	file:configs/ota/repo/manifest.json	hashed
+OTA: aplikované -> verzia 1.0.0 (zo servera http://ota)
+OTA: cmd/ota payload='http://ota_evil' → použijem ako OTA_BASE
+base64 conversion failed - was an actual signature given?
+OTA: overenie podpisu zlyhalo – Command '['minisign', '-Vm', '/tmp/manifest.json', '-P', 'RWTlRDB/h//jHxA9FeWHeGTHiLzh92QVOq5iLE3AxgIXi79okqNpe62D']' returned non-zero exit status 2.
+OTA: podpis NEPLATNÝ – aktualizácia ZAMIETNUTÁ

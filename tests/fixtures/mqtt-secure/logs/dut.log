@@ -1,0 +1,4 @@
+/app/dut.py:112: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  client = mqtt.Client()
+MQTT TLS zapnuté, CA=/certs/ca.crt
+MQTT connected rc= 0

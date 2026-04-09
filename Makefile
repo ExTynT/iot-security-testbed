@@ -17,7 +17,7 @@ N ?= 3
         mqtt-baseline mqtt-secure \
         coap-baseline coap-secure \
         ota-baseline ota-secure \
-        gen-passwd report analyze analyze-final clean help \
+        gen-passwd report analyze analyze-final clean help lint test smoke-ci \
         replicate-mqtt replicate-coap replicate-ota
 
 # ─── Build všetkých imidžov ───────────────────────────────────────────────────
@@ -103,9 +103,8 @@ _ota-keys:
 	@test -f configs/ota/minisign.pub || \
 	  (printf '\n\n' | tools/minisign/minisign-win64/minisign.exe \
 	    -G -p configs/ota/minisign.pub -s configs/ota/minisign.key)
-	@test -f configs/ota/repo/manifest.json.minisig || \
-	  (printf '\n' | tools/minisign/minisign-win64/minisign.exe \
-	    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json)
+	@printf '\n' | tools/minisign/minisign-win64/minisign.exe \
+	  -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json > /dev/null
 
 # ─── Replikácie (N opakovaní každého scenára) ─────────────────────────────────
 replicate-mqtt:
@@ -156,6 +155,24 @@ logs:
 report:
 	docker compose run --rm monitor-collector
 	@echo "Výsledky: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/results/"
+
+lint:
+	python -m ruff check images/monitor-collector/collector.py tests
+
+test:
+	python -m pytest tests -q
+
+smoke-ci:
+	$(BASH) -lc 'set -euo pipefail; \
+		cleanup() { docker compose $(BASE) down --remove-orphans || true; }; \
+		trap cleanup EXIT; \
+		bash scripts/new_run.sh; \
+		run_id=$$(grep "^RUN_ID=" .env | cut -d= -f2); \
+		echo "mqtt-baseline" > "runs/$$run_id/state/scenario.txt"; \
+		docker compose $(BASE) up -d --build; \
+		bash scripts/wait_ready.sh mqtt-baseline; \
+		bash scripts/wait_ready.sh coap-baseline; \
+		bash scripts/smoke_test.sh'
 
 analyze:
 	$(BASH) -lc "cd . && ANALYZE_OUTPUT_PATH=runs/analysis.md ANALYZE_FIGURES_SUBDIR=figures bash scripts/analyze_runs.sh"

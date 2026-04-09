@@ -1,0 +1,42 @@
+1774192605: mosquitto version 2.0.18 starting
+1774192605: Config loaded from /mosquitto/config/mosquitto.conf.
+1774192605: Opening ipv4 listen socket on port 1883.
+1774192605: Opening ipv6 listen socket on port 1883.
+1774192605: mosquitto version 2.0.18 running
+1774192605: New connection from 172.19.0.6:53383 on port 1883.
+1774192605: New client connected from 172.19.0.6:53383 as auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544 (p2, c1, k60).
+1774192605: No will message specified.
+1774192605: Sending CONNACK to auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544 (0, 0)
+1774192605: Received SUBSCRIBE from auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544
+1774192605: 	cmd/ota (QoS 0)
+1774192605: auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544 0 cmd/ota
+1774192605: Sending SUBACK to auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544
+1774192605: Received PUBLISH from auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544 (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192608: Client auto-74F6BD60-614C-7D8B-9E48-DC91E76C3544 closed its connection.
+1774192608: New connection from 172.19.0.6:51665 on port 1883.
+1774192608: New client connected from 172.19.0.6:51665 as auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (p2, c1, k60).
+1774192608: No will message specified.
+1774192608: Sending CONNACK to auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (0, 0)
+1774192608: Received SUBSCRIBE from auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674
+1774192608: 	cmd/ota (QoS 0)
+1774192608: auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 0 cmd/ota
+1774192608: Sending SUBACK to auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674
+1774192608: Received PUBLISH from auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192610: New connection from 172.19.0.4:38816 on port 1883.
+1774192610: New client connected from 172.19.0.4:38816 as auto-4CA20130-98AD-D9A6-C8E0-3ABABB0DF610 (p2, c1, k60).
+1774192610: No will message specified.
+1774192610: Sending CONNACK to auto-4CA20130-98AD-D9A6-C8E0-3ABABB0DF610 (0, 0)
+1774192610: Received PUBLISH from auto-4CA20130-98AD-D9A6-C8E0-3ABABB0DF610 (d0, q0, r0, m0, 'cmd/ota', ... (10 bytes))
+1774192610: Sending PUBLISH to auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (d0, q0, r0, m0, 'cmd/ota', ... (10 bytes))
+1774192610: Received DISCONNECT from auto-4CA20130-98AD-D9A6-C8E0-3ABABB0DF610
+1774192610: Client auto-4CA20130-98AD-D9A6-C8E0-3ABABB0DF610 disconnected.
+1774192610: New connection from 172.19.0.4:38828 on port 1883.
+1774192610: New client connected from 172.19.0.4:38828 as auto-D59444A4-69CD-81CD-F41D-D7B8B10C2132 (p2, c1, k60).
+1774192610: No will message specified.
+1774192610: Sending CONNACK to auto-D59444A4-69CD-81CD-F41D-D7B8B10C2132 (0, 0)
+1774192610: Received PUBLISH from auto-D59444A4-69CD-81CD-F41D-D7B8B10C2132 (d0, q0, r0, m0, 'cmd/ota', ... (15 bytes))
+1774192610: Sending PUBLISH to auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (d0, q0, r0, m0, 'cmd/ota', ... (15 bytes))
+1774192610: Received DISCONNECT from auto-D59444A4-69CD-81CD-F41D-D7B8B10C2132
+1774192610: Client auto-D59444A4-69CD-81CD-F41D-D7B8B10C2132 disconnected.
+1774192613: Received PUBLISH from auto-B6DBCC0F-17D2-3C0C-E90D-65440A9B2674 (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192614: mosquitto version 2.0.18 terminating

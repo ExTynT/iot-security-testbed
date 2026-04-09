@@ -1,0 +1,140 @@
+1774192481: mosquitto version 2.0.18 starting
+1774192481: Config loaded from /mosquitto/config/mosquitto.conf.
+1774192481: Warning: File /mosquitto/config/passwd has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/passwd`.
+1774192481: Warning: File /mosquitto/config/passwd owner is not mosquitto. Future versions will refuse to load this file.To fix this, use `chown mosquitto /mosquitto/config/passwd`.
+1774192481: Warning: File /mosquitto/config/passwd group is not mosquitto. Future versions will refuse to load this file.
+1774192481: Warning: File /mosquitto/config/aclfile has world readable permissions. Future versions will refuse to load this file.
+To fix this, use `chmod 0700 /mosquitto/config/aclfile`.
+1774192481: Warning: File /mosquitto/config/aclfile owner is not mosquitto. Future versions will refuse to load this file.To fix this, use `chown mosquitto /mosquitto/config/aclfile`.
+1774192481: Warning: File /mosquitto/config/aclfile group is not mosquitto. Future versions will refuse to load this file.
+1774192481: Opening ipv4 listen socket on port 8883.
+1774192481: Opening ipv6 listen socket on port 8883.
+1774192481: mosquitto version 2.0.18 running
+1774192481: New connection from 172.19.0.4:33549 on port 8883.
+1774192482: New client connected from 172.19.0.4:33549 as auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F (p2, c1, k60, u'device01').
+1774192482: No will message specified.
+1774192482: Sending CONNACK to auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F (0, 0)
+1774192482: Received PUBLISH from auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192482: Received SUBSCRIBE from auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F
+1774192482: 	cmd/ota (QoS 0)
+1774192482: auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F 0 cmd/ota
+1774192482: Sending SUBACK to auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F
+1774192482: New connection from 172.19.0.3:37942 on port 8883.
+1774192482: New client connected from 172.19.0.3:37942 as auto-8E68D035-B1D4-761F-F6BE-0DEE90AF6C8D (p2, c1, k60, u'controller01').
+1774192482: No will message specified.
+1774192482: Sending CONNACK to auto-8E68D035-B1D4-761F-F6BE-0DEE90AF6C8D (0, 0)
+1774192482: Received PUBLISH from auto-8E68D035-B1D4-761F-F6BE-0DEE90AF6C8D (d0, q0, r0, m0, 'cmd/ready', ... (5 bytes))
+1774192482: Received DISCONNECT from auto-8E68D035-B1D4-761F-F6BE-0DEE90AF6C8D
+1774192482: Client auto-8E68D035-B1D4-761F-F6BE-0DEE90AF6C8D disconnected.
+1774192482: New connection from 172.19.0.3:37948 on port 8883.
+1774192482: Sending CONNACK to auto-BA0BD0E4-122B-1032-1C58-95B208970518 (0, 5)
+1774192482: Client auto-BA0BD0E4-122B-1032-1C58-95B208970518 disconnected, not authorised.
+1774192482: New connection from 172.19.0.3:37962 on port 8883.
+1774192483: Sending CONNACK to auto-92FA00FD-FB4E-8769-BA34-61D1F7F3B88B (0, 5)
+1774192483: Client auto-92FA00FD-FB4E-8769-BA34-61D1F7F3B88B disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:37974 on port 8883.
+1774192483: Sending CONNACK to auto-893AD54E-56F6-EFBB-0816-781605E3F09C (0, 5)
+1774192483: Client auto-893AD54E-56F6-EFBB-0816-781605E3F09C disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:37984 on port 8883.
+1774192483: Sending CONNACK to auto-7759DB88-2174-BBAB-E639-997AEFFBC36B (0, 5)
+1774192483: Client auto-7759DB88-2174-BBAB-E639-997AEFFBC36B disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:37988 on port 8883.
+1774192483: Sending CONNACK to auto-E88519A0-64BC-E0AB-23CC-C415566FDAEB (0, 5)
+1774192483: Client auto-E88519A0-64BC-E0AB-23CC-C415566FDAEB disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:37996 on port 8883.
+1774192483: Sending CONNACK to auto-5D83BD0A-2867-7081-B331-1F169279940E (0, 5)
+1774192483: Client auto-5D83BD0A-2867-7081-B331-1F169279940E disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38006 on port 8883.
+1774192483: Sending CONNACK to auto-8C30865D-1E7B-DDC5-2FA7-7F7B504CE62B (0, 5)
+1774192483: Client auto-8C30865D-1E7B-DDC5-2FA7-7F7B504CE62B disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38022 on port 8883.
+1774192483: Sending CONNACK to auto-C3F87AAA-0162-DD5C-A20E-CE357023889D (0, 5)
+1774192483: Client auto-C3F87AAA-0162-DD5C-A20E-CE357023889D disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38030 on port 8883.
+1774192483: Sending CONNACK to auto-B173648A-E50A-A315-D96B-7997FC0B81BA (0, 5)
+1774192483: Client auto-B173648A-E50A-A315-D96B-7997FC0B81BA disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38038 on port 8883.
+1774192483: Sending CONNACK to auto-C77177F5-1BAE-CEB6-709F-7982B6F1D2D2 (0, 5)
+1774192483: Client auto-C77177F5-1BAE-CEB6-709F-7982B6F1D2D2 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38048 on port 8883.
+1774192483: Sending CONNACK to auto-B004430C-05C8-AE4B-C52F-BD119D73B93B (0, 5)
+1774192483: Client auto-B004430C-05C8-AE4B-C52F-BD119D73B93B disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38050 on port 8883.
+1774192483: Sending CONNACK to auto-F7C0CD3E-10E1-7A4B-A8F7-EB7E4439274E (0, 5)
+1774192483: Client auto-F7C0CD3E-10E1-7A4B-A8F7-EB7E4439274E disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38054 on port 8883.
+1774192483: Sending CONNACK to auto-ECC333A4-59B8-3C0A-D839-8162A8FF7149 (0, 5)
+1774192483: Client auto-ECC333A4-59B8-3C0A-D839-8162A8FF7149 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38064 on port 8883.
+1774192483: Sending CONNACK to auto-11D6BD25-A2D3-ADE5-822B-6ACEFE1AA537 (0, 5)
+1774192483: Client auto-11D6BD25-A2D3-ADE5-822B-6ACEFE1AA537 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38080 on port 8883.
+1774192483: Sending CONNACK to auto-B17A310B-4EDA-B4DE-D38C-8F20544FFB81 (0, 5)
+1774192483: Client auto-B17A310B-4EDA-B4DE-D38C-8F20544FFB81 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38094 on port 8883.
+1774192483: Sending CONNACK to auto-CC740572-5F99-6A6C-E49C-2ACED1C42E6E (0, 5)
+1774192483: Client auto-CC740572-5F99-6A6C-E49C-2ACED1C42E6E disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38110 on port 8883.
+1774192483: Sending CONNACK to auto-90CE1C27-D37A-DFD8-F087-374D0AA42280 (0, 5)
+1774192483: Client auto-90CE1C27-D37A-DFD8-F087-374D0AA42280 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38114 on port 8883.
+1774192483: Sending CONNACK to auto-B0DF9BBB-1DF2-35EB-5D2F-3401CF3A19E3 (0, 5)
+1774192483: Client auto-B0DF9BBB-1DF2-35EB-5D2F-3401CF3A19E3 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38116 on port 8883.
+1774192483: Sending CONNACK to auto-CF9E34D8-7A87-4360-4A76-52EE7BBFD5A1 (0, 5)
+1774192483: Client auto-CF9E34D8-7A87-4360-4A76-52EE7BBFD5A1 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38120 on port 8883.
+1774192483: Sending CONNACK to auto-56D38406-EC38-3D4A-FCB8-424D4721099F (0, 5)
+1774192483: Client auto-56D38406-EC38-3D4A-FCB8-424D4721099F disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38132 on port 8883.
+1774192483: Sending CONNACK to auto-57EEC5CB-9A98-103F-35BE-4DEC537FF279 (0, 5)
+1774192483: Client auto-57EEC5CB-9A98-103F-35BE-4DEC537FF279 disconnected, not authorised.
+1774192483: New connection from 172.19.0.3:38134 on port 8883.
+1774192484: Sending CONNACK to auto-DFEE8A28-9A6D-E1BA-7486-C345E6EE3F31 (0, 5)
+1774192484: Client auto-DFEE8A28-9A6D-E1BA-7486-C345E6EE3F31 disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38146 on port 8883.
+1774192484: Sending CONNACK to auto-4D85AE9F-327B-5C8B-8639-AB3FCD2D2B3B (0, 5)
+1774192484: Client auto-4D85AE9F-327B-5C8B-8639-AB3FCD2D2B3B disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38162 on port 8883.
+1774192484: Sending CONNACK to auto-A1D8BCBC-D87D-C0F5-E572-0A0640FBC94D (0, 5)
+1774192484: Client auto-A1D8BCBC-D87D-C0F5-E572-0A0640FBC94D disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38164 on port 8883.
+1774192484: Sending CONNACK to auto-40E70BC7-3EE0-D929-6833-F881240B7D5C (0, 5)
+1774192484: Client auto-40E70BC7-3EE0-D929-6833-F881240B7D5C disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38172 on port 8883.
+1774192484: Sending CONNACK to auto-536F7DB0-5676-7040-CA5C-C26286C7142D (0, 5)
+1774192484: Client auto-536F7DB0-5676-7040-CA5C-C26286C7142D disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38178 on port 8883.
+1774192484: Sending CONNACK to auto-4156EE61-B7F9-88CC-6CDF-DF3D2FCF23D8 (0, 5)
+1774192484: Client auto-4156EE61-B7F9-88CC-6CDF-DF3D2FCF23D8 disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38182 on port 8883.
+1774192484: Sending CONNACK to auto-D189656A-E61A-8448-B4F3-970A05CDFE8F (0, 5)
+1774192484: Client auto-D189656A-E61A-8448-B4F3-970A05CDFE8F disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38184 on port 8883.
+1774192484: Sending CONNACK to auto-09B2CD8C-C5BD-EDCD-5C90-52E89539A6A8 (0, 5)
+1774192484: Client auto-09B2CD8C-C5BD-EDCD-5C90-52E89539A6A8 disconnected, not authorised.
+1774192484: New connection from 172.19.0.3:38196 on port 8883.
+1774192484: Sending CONNACK to auto-DF7DAAB4-5DFA-E629-3363-CA4ABB02510C (0, 5)
+1774192484: Client auto-DF7DAAB4-5DFA-E629-3363-CA4ABB02510C disconnected, not authorised.
+1774192485: New connection from 172.19.0.3:38212 on port 8883.
+1774192485: New client connected from 172.19.0.3:38212 as auto-B38F0F6F-1F21-0565-BE81-1C398F86F00B (p2, c1, k60, u'controller01').
+1774192485: No will message specified.
+1774192485: Sending CONNACK to auto-B38F0F6F-1F21-0565-BE81-1C398F86F00B (0, 0)
+1774192485: Received PUBLISH from auto-B38F0F6F-1F21-0565-BE81-1C398F86F00B (d0, q0, r0, m0, 'cmd/test', ... (13 bytes))
+1774192485: Received DISCONNECT from auto-B38F0F6F-1F21-0565-BE81-1C398F86F00B
+1774192485: Client auto-B38F0F6F-1F21-0565-BE81-1C398F86F00B disconnected.
+1774192485: New connection from 172.19.0.3:38218 on port 8883.
+1774192485: New client connected from 172.19.0.3:38218 as auto-95545B47-78B3-8FF7-CB21-C7551625A304 (p2, c1, k60, u'controller01').
+1774192485: No will message specified.
+1774192485: Sending CONNACK to auto-95545B47-78B3-8FF7-CB21-C7551625A304 (0, 0)
+1774192485: Received SUBSCRIBE from auto-95545B47-78B3-8FF7-CB21-C7551625A304
+1774192485: 	telemetry/version (QoS 0)
+1774192485: auto-95545B47-78B3-8FF7-CB21-C7551625A304 0 telemetry/version
+1774192485: Sending SUBACK to auto-95545B47-78B3-8FF7-CB21-C7551625A304
+1774192487: Received PUBLISH from auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192487: Sending PUBLISH to auto-95545B47-78B3-8FF7-CB21-C7551625A304 (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192487: Received DISCONNECT from auto-95545B47-78B3-8FF7-CB21-C7551625A304
+1774192487: Client auto-95545B47-78B3-8FF7-CB21-C7551625A304 disconnected.
+1774192492: Received PUBLISH from auto-2C31EC1A-E286-AF83-12B9-B36FB04DF17F (d0, q0, r0, m0, 'telemetry/version', ... (5 bytes))
+1774192492: mosquitto version 2.0.18 terminating

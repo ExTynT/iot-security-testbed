@@ -1,0 +1,13 @@
+BEFORE_VERSION=1.0.0
+DUT_LINES_BEFORE=7
+EVIL_HTTP_BEFORE=2
+EVIL_TRIGGER_SENT
+AFTER_VERSION=1.0.0
+DUT_LINES_AFTER=11
+EVIL_HTTP_AFTER=4
+DUT_NEW_BEGIN
+OTA: cmd/ota payload='http://ota_evil' → použijem ako OTA_BASE
+base64 conversion failed - was an actual signature given?
+OTA: overenie podpisu zlyhalo – Command '['minisign', '-Vm', '/tmp/manifest.json', '-P', 'RWTlRDB/h//jHxA9FeWHeGTHiLzh92QVOq5iLE3AxgIXi79okqNpe62D']' returned non-zero exit status 2.
+OTA: podpis NEPLATNÝ – aktualizácia ZAMIETNUTÁ
+DUT_NEW_END
