@@ -1,4 +1,6 @@
 {
   "version": "9.9.9-EVIL",
-  "file": "firmware_evil.bin"
+  "version_code": 9900,
+  "file": "firmware_evil.bin",
+  "sha256": "72ae7ca0d8524e2311a475ab78d71f0a58a4fa88c422f19581a126589c3b7efb"
 }

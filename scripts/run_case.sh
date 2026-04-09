@@ -35,10 +35,8 @@ ensure_ota_keys() {
     printf '\n\n' | tools/minisign/minisign-win64/minisign.exe \
       -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
   fi
-  if [ ! -f configs/ota/repo/manifest.json.minisig ]; then
-    printf '\n' | tools/minisign/minisign-win64/minisign.exe \
-      -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json
-  fi
+  printf '\n' | tools/minisign/minisign-win64/minisign.exe \
+    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json >/dev/null
 }
 
 run_collector() {

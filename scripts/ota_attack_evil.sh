@@ -7,10 +7,31 @@ cd "$(dirname "$0")/.."
 
 RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
 OUTLOG="runs/${RUN_ID}/logs/ota_attack.log"
-STATE_FILE="runs/${RUN_ID}/state/version.txt"
+STATE_FILE="runs/${RUN_ID}/state/version.json"
 DUT_LOG="runs/${RUN_ID}/logs/dut.log"
 EVIL_LOG="runs/${RUN_ID}/logs/ota_evil_access.log"
-BEFORE_VERSION="$(cat "$STATE_FILE" 2>/dev/null || echo "unknown")"
+read_state_version() {
+  python - "$1" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+if not path.exists():
+    print("unknown")
+    raise SystemExit(0)
+
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    print("unknown")
+    raise SystemExit(0)
+
+print(str(data.get("version", "unknown")))
+PY
+}
+
+BEFORE_VERSION="$(read_state_version "$STATE_FILE")"
 DUT_LINES_BEFORE="$(wc -l < "$DUT_LOG" 2>/dev/null || echo 0)"
 EVIL_HTTP_BEFORE="$(grep -c 'GET /' "$EVIL_LOG" 2>/dev/null || true)"
 
@@ -39,7 +60,7 @@ echo "[3] DUT log (posledne OTA zaznamy):"
 grep -i "OTA\|aplikovan\|ZAMIETNUT\|podpis" "$DUT_LOG" 2>/dev/null | tail -10 \
   || echo "  (log zatial prazdny)"
 
-AFTER_VERSION="$(cat "$STATE_FILE" 2>/dev/null || echo "unknown")"
+AFTER_VERSION="$(read_state_version "$STATE_FILE")"
 DUT_LINES_AFTER="$(wc -l < "$DUT_LOG" 2>/dev/null || echo 0)"
 EVIL_HTTP_AFTER="$(grep -c 'GET /' "$EVIL_LOG" 2>/dev/null || true)"
 printf 'AFTER_VERSION=%s\nDUT_LINES_AFTER=%s\nEVIL_HTTP_AFTER=%s\n' \

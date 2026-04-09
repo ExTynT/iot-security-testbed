@@ -1,4 +1,6 @@
 {
   "version": "1.0.0",
-  "file": "firmware_v1.bin"
+  "version_code": 1000,
+  "file": "firmware_v1.bin",
+  "sha256": "5b2bbfc24967f4275d2b093baeb0a0ee505d94a7535349e52172f36ed26306b0"
 }
