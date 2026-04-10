@@ -1,4 +1,6 @@
+import os
 import re
+import stat
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -90,3 +92,12 @@ def test_runners_use_health_aware_startup_and_wait_ready_is_minimal():
     assert "up -d --wait" in makefile
     assert "retry_until" not in wait_ready
     assert "docker compose exec" not in wait_ready
+
+
+def test_mosquitto_bootstrap_scripts_are_executable_on_posix():
+    if os.name != "posix":
+        return
+
+    for rel_path in ("scripts/mosquitto_entrypoint.sh", "scripts/mosquitto_secure_bootstrap.sh"):
+        mode = (PROJECT_ROOT / rel_path).stat().st_mode
+        assert mode & stat.S_IXUSR, f"{rel_path} must be executable on POSIX runners"
