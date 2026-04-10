@@ -23,7 +23,7 @@ RESULT=$(docker compose exec -T attacker sh -c '
   denied=0
   for i in $(seq 1 30); do
     mosquitto_pub -h mosquitto -p 8883 --cafile /work/certs/ca.crt \
-      -t cmd/ota -m "http://ota_evil?attempt=$i" 2>/dev/null \
+      -t cmd/ota -m "http://ota_evil:8080?attempt=$i" 2>/dev/null \
       || denied=$((denied+1))
   done
   echo $denied
@@ -37,7 +37,7 @@ echo ">>> ${DENIED}/${TOTAL} pokusov odmietnutych (KPI: P1_mqtt_unauth_denied=${
 echo ""
 echo "[2] Attacker skusa plaintext port 1883 (nema byt otvoreny v secure mode)..."
 docker compose exec -T attacker \
-  mosquitto_pub -h mosquitto -p 1883 -t "cmd/ota" -m "http://ota_evil" 2>/dev/null \
+  mosquitto_pub -h mosquitto -p 1883 -t "cmd/ota" -m "http://ota_evil:8080" 2>/dev/null \
   || echo ">>> ODMIETNUTY – port 1883 zatvoreny (ocakavane)"
 
 echo ""

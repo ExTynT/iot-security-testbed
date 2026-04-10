@@ -28,7 +28,7 @@ build:
 mqtt-baseline:
 	scripts/new_run.sh
 	@echo "mqtt-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	$(COMPOSE) $(BASE) up -d
+	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh mqtt-baseline
 	bash scripts/mqtt_baseline_attack.sh
 	docker compose run --rm monitor-collector
@@ -37,10 +37,9 @@ mqtt-baseline:
 
 # ─── MQTT Secure (P1 – TLS 8883 + ACL + heslo) ───────────────────────────────
 mqtt-secure:
-	@test -f configs/mqtt/secure/passwd || (echo "Chyba: spusti 'make gen-passwd' najprv" && exit 1)
 	scripts/new_run.sh
 	@echo "mqtt-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	$(COMPOSE) $(MQTT_S) up -d
+	$(COMPOSE) $(MQTT_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh mqtt-secure
 	bash scripts/mqtt_secure_attack_unauth.sh
 	bash scripts/mqtt_secure_control_auth.sh
@@ -52,7 +51,7 @@ mqtt-secure:
 coap-baseline:
 	scripts/new_run.sh
 	@echo "coap-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	$(COMPOSE) $(BASE) up -d
+	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh coap-baseline
 	bash scripts/coap_baseline_attack.sh
 	docker compose run --rm monitor-collector
@@ -63,7 +62,7 @@ coap-baseline:
 coap-secure:
 	scripts/new_run.sh
 	@echo "coap-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	$(COMPOSE) $(COAP_S) up -d
+	$(COMPOSE) $(COAP_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh coap-secure
 	bash scripts/coap_secure_attack_plain_should_fail.sh
 	bash scripts/coap_secure_attack_wrong_psk.sh
@@ -76,7 +75,7 @@ coap-secure:
 ota-baseline:
 	scripts/new_run.sh
 	@echo "ota-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	$(COMPOSE) $(BASE) up -d
+	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh ota-baseline
 	bash scripts/ota_attack_evil.sh
 	docker compose run --rm monitor-collector
@@ -87,10 +86,7 @@ ota-baseline:
 ota-secure: _ota-keys
 	scripts/new_run.sh
 	@echo "ota-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
-	bash scripts/set_minisign_pubkey.sh
-	$(COMPOSE) $(OTA_S) up -d
-	bash scripts/wait_ready.sh ota-secure
-	$(COMPOSE) $(OTA_S) up -d --force-recreate dut
+	$(COMPOSE) $(OTA_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh ota-secure
 	bash scripts/ota_secure_control_signed.sh
 	bash scripts/ota_attack_evil.sh
@@ -169,7 +165,7 @@ smoke-ci:
 		bash scripts/new_run.sh; \
 		run_id=$$(grep "^RUN_ID=" .env | cut -d= -f2); \
 		echo "mqtt-baseline" > "runs/$$run_id/state/scenario.txt"; \
-		docker compose $(BASE) up -d --build; \
+		docker compose $(BASE) up -d --build --wait --wait-timeout 90; \
 		bash scripts/wait_ready.sh mqtt-baseline; \
 		bash scripts/wait_ready.sh coap-baseline; \
 		bash scripts/smoke_test.sh'
@@ -206,7 +202,7 @@ help:
 	@echo ""
 	@echo "  Ostatné:"
 	@echo "    build              Zostav všetky Docker imidže"
-	@echo "    gen-passwd         Vygeneruj configs/mqtt/secure/passwd"
+	@echo "    gen-passwd         Deprecated helper; MQTT secure uz pouziva per-run secrets"
 	@echo "    report             Spusti collector pre aktuálny run"
 	@echo "    down               Zastav všetky kontajnery"
 	@echo "    clean              Vymaž kontajnery, volumes, Docker cache"

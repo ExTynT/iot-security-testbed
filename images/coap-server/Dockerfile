@@ -16,14 +16,17 @@ RUN git clone --depth 1 --branch v4.3.5 https://github.com/obgm/libcoap.git /tmp
     awk -f /tmp/fix_psk.awk src/coap_openssl.c > /tmp/coap_openssl_patched.c && \
     mv /tmp/coap_openssl_patched.c src/coap_openssl.c && \
     grep -c 'SSL_CTX_set_psk_client_callback(o_context->dtls.ctx, coap_dtls_psk_client_callback)' src/coap_openssl.c && \
+    # Fix 3: in secure PSK/PKI mode, create only secure endpoints so port 5683 stays closed
+    # without requiring container firewall capabilities. \
+    printf 'BEGIN{patched=0}\n/for \\(info = info_list; info != NULL; info = info->next\\) \\{/{print; if(!patched){print "    if ((key_defined || cert_file) &&"; print "        (info->proto == COAP_PROTO_UDP || info->proto == COAP_PROTO_TCP)) {"; print "      continue;"; print "    }"; patched=1; next}}{print}\n' > /tmp/fix_secure_endpoints.awk && \
+    awk -f /tmp/fix_secure_endpoints.awk examples/coap-server.c > /tmp/coap_server_patched.c && \
+    mv /tmp/coap_server_patched.c examples/coap-server.c && \
+    grep -c 'info->proto == COAP_PROTO_UDP || info->proto == COAP_PROTO_TCP' examples/coap-server.c && \
     ./autogen.sh && \
     ./configure --disable-tests --disable-documentation --enable-fast-install \
         --with-openssl --enable-dtls && \
     make && make install && \
-    cd / && rm -rf /tmp/libcoap /tmp/fix_psk.awk
-
-# iptables needed for secure scenario: block plaintext port 5683
-RUN apk add --no-cache iptables
+    cd / && rm -rf /tmp/libcoap /tmp/fix_psk.awk /tmp/fix_secure_endpoints.awk
 
 EXPOSE 5683/udp 5684/udp
 CMD ["coap-server", "-A", "0.0.0.0", "-v", "6"]

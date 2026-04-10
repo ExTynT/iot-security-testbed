@@ -24,12 +24,6 @@ Podporovane scenare:
 EOF
 }
 
-ensure_mqtt_passwd() {
-  if [ ! -f configs/mqtt/secure/passwd ]; then
-    bash scripts/gen_mqtt_passwd.sh
-  fi
-}
-
 ensure_ota_keys() {
   if [ ! -f configs/ota/minisign.pub ]; then
     printf '\n\n' | tools/minisign/minisign-win64/minisign.exe \
@@ -53,7 +47,7 @@ run_common_case() {
   run_id="$(grep '^RUN_ID=' .env | cut -d= -f2)"
   echo "$scenario" > "runs/${run_id}/state/scenario.txt"
 
-  docker compose $compose_args up -d
+  docker compose $compose_args up -d --wait --wait-timeout 90
   bash scripts/wait_ready.sh "$scenario"
 
   for script in "$@"; do
@@ -74,7 +68,6 @@ case "$1" in
     run_common_case "mqtt-baseline" "$BASE" "scripts/mqtt_baseline_attack.sh"
     ;;
   mqtt-secure)
-    ensure_mqtt_passwd
     run_common_case "mqtt-secure" "$MQTT_S" \
       "scripts/mqtt_secure_attack_unauth.sh" \
       "scripts/mqtt_secure_control_auth.sh"
@@ -96,10 +89,7 @@ case "$1" in
     bash scripts/new_run.sh
     run_id="$(grep '^RUN_ID=' .env | cut -d= -f2)"
     echo "ota-secure" > "runs/${run_id}/state/scenario.txt"
-    bash scripts/set_minisign_pubkey.sh
-    docker compose $OTA_S up -d
-    bash scripts/wait_ready.sh ota-secure
-    docker compose $OTA_S up -d --force-recreate dut
+    docker compose $OTA_S up -d --wait --wait-timeout 90
     bash scripts/wait_ready.sh ota-secure
     bash scripts/ota_secure_control_signed.sh
     bash scripts/ota_attack_evil.sh

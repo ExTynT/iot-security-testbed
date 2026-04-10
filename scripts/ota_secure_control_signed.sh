@@ -39,7 +39,7 @@ echo "=== OTA SECURE - kontrolny beh (signed official update) ==="
 echo ""
 echo "[1] Controller spusta OTA z oficialneho servera..."
 docker compose exec -T attacker \
-  mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota" -d
+  mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota:8080" -d
 echo "SIGNED_TRIGGER_SENT" >> "$OUTLOG"
 echo ""
 echo "[2] Cakam na aplikaciu podpisanej aktualizacie..."

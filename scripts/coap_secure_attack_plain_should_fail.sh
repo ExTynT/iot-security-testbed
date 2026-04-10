@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# CoAP Secure – plaintext GET na port 5683 (má byť zablokovaný firewallom)
-# Metodika kap. 3.11: KPI = počet odmietnutých požiadaviek bez DTLS
-# Očakávaný výsledok: NEUSPECH (iptables blokuje port 5683)
-# Spustiť po: docker compose -f docker-compose.yml -f docker-compose.coap-secure.yml up -d
-# Pozn.: sekvenčné pokusy sú pomalšie, ale deterministickejšie než paralelný burst.
+# CoAP secure plaintext probe on port 5683.
+# Expected result: secure build exposes only the DTLS endpoint on 5684.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,13 +11,13 @@ TOTAL=3
 
 : > "$OUTLOG"
 
-echo "=== CoAP SECURE ATTACK – plaintext 5683 blokacia (${TOTAL} pokusov) ==="
+echo "=== CoAP SECURE ATTACK - plaintext 5683 probe (${TOTAL} pokusov) ==="
 echo ""
-echo "[1] Attacker skusa ${TOTAL}x plaintext GET na port 5683 (firewall ich ma blokovat)..."
+echo "[1] Attacker skusa ${TOTAL}x plaintext GET na port 5683 (secure build ho nema pocuvat)..."
 echo "    Pouzije sa kratky timeout bez retransmisii, aby scenar nevisel na UDP retry logike."
 
 for _ in $(seq 1 15); do
-  if grep -q "CoAP DTLS PSK: 5683=BLOCKED 5684=DTLS+PSK" "runs/${RUN_ID}/logs/coap.log" 2>/dev/null; then
+  if grep -q "CoAP DTLS PSK: 5683=CLOSED 5684=DTLS+PSK" "runs/${RUN_ID}/logs/coap.log" 2>/dev/null; then
     break
   fi
   sleep 1
@@ -44,8 +41,8 @@ for i in $(seq 1 "${BLOCKED}"); do echo "P2_coap_plain_blocked 1" >> "$LOGF"; do
 for i in $(seq 1 "${ACCESSIBLE}"); do echo "P2_coap_plain_accessible 1" >> "$LOGF"; done
 echo ">>> ${BLOCKED}/${TOTAL} poziadaviek zablokovanych (KPI: P2_coap_plain_blocked=${BLOCKED})"
 if [ "${ACCESSIBLE}" -gt 0 ]; then
-  echo ">>> VAROVANIE – ${ACCESSIBLE} pokusov USPESNYCH (iptables nefungoval?)"
+  echo ">>> VAROVANIE - ${ACCESSIBLE} pokusov USPESNYCH (plaintext endpoint je stale otvoreny?)"
 fi
 
 echo ""
-echo "=== VYSLEDOK: ${BLOCKED}/${TOTAL} zablokovaných (port 5683 blokuje iptables) ==="
+echo "=== VYSLEDOK: ${BLOCKED}/${TOTAL} zablokovanych (port 5683 je zavrety nativne) ==="

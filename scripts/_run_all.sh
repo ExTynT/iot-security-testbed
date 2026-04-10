@@ -16,12 +16,6 @@ run_collector() {
   docker compose run --rm monitor-collector
 }
 
-ensure_mqtt_passwd() {
-  if [ ! -f configs/mqtt/secure/passwd ]; then
-    bash scripts/gen_mqtt_passwd.sh
-  fi
-}
-
 ensure_ota_keys() {
   if [ ! -f configs/ota/minisign.pub ]; then
     printf '\n\n' | tools/minisign/minisign-win64/minisign.exe \
@@ -40,7 +34,7 @@ run_case() {
   RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
   echo "$name" > "runs/${RUN_ID}/state/scenario.txt"
 
-  docker compose $compose_args up -d
+  docker compose $compose_args up -d --wait --wait-timeout 90
   bash "scripts/wait_ready.sh" "$name"
 
   for script in "$@"; do
@@ -64,7 +58,6 @@ for rep in $(seq 1 "${REPLICATIONS}"); do
 
   echo ""
   echo "========== MQTT SECURE [${rep}/${REPLICATIONS}] =========="
-  ensure_mqtt_passwd
   run_case "mqtt-secure" "$MQTT_S" \
     "scripts/mqtt_secure_attack_unauth.sh" \
     "scripts/mqtt_secure_control_auth.sh"
@@ -90,10 +83,7 @@ for rep in $(seq 1 "${REPLICATIONS}"); do
   bash scripts/new_run.sh
   RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
   echo "ota-secure" > "runs/${RUN_ID}/state/scenario.txt"
-  bash scripts/set_minisign_pubkey.sh
-  docker compose $OTA_S up -d
-  bash scripts/wait_ready.sh ota-secure
-  docker compose $OTA_S up -d --force-recreate dut
+  docker compose $OTA_S up -d --wait --wait-timeout 90
   bash scripts/wait_ready.sh ota-secure
   bash scripts/ota_secure_control_signed.sh
   bash scripts/ota_attack_evil.sh
