@@ -1,5 +1,7 @@
+import json
 import os
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 
@@ -21,6 +23,7 @@ def resolve_bash():
 
 
 BASH = resolve_bash()
+GIT = shutil.which("git")
 LEGACY_DEFAULTS = {
     "device01" + "pass",
     "controller01" + "pass",
@@ -28,7 +31,7 @@ LEGACY_DEFAULTS = {
 }
 
 
-@pytest.mark.skipif(BASH is None, reason="bash not available")
+@pytest.mark.skipif(BASH is None or GIT is None, reason="bash or git not available")
 def test_new_run_generates_only_run_id_env_and_per_run_secret_files(tmp_path):
     repo_root = tmp_path / "repo"
     scripts_dir = repo_root / "scripts"
@@ -38,6 +41,26 @@ def test_new_run_generates_only_run_id_env_and_per_run_secret_files(tmp_path):
     target_script = scripts_dir / "new_run.sh"
     target_script.write_text(source_script.read_text(encoding="utf-8"), encoding="utf-8")
     target_script.chmod(0o755)
+
+    subprocess.run([GIT, "init"], cwd=repo_root, check=True, capture_output=True, text=True)
+    subprocess.run([GIT, "config", "user.name", "Codex"], cwd=repo_root, check=True, capture_output=True, text=True)
+    subprocess.run(
+        [GIT, "config", "user.email", "codex@example.com"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    (repo_root / "README.md").write_text("fixture repo\n", encoding="utf-8")
+    subprocess.run([GIT, "add", "README.md"], cwd=repo_root, check=True, capture_output=True, text=True)
+    subprocess.run([GIT, "commit", "-m", "fixture"], cwd=repo_root, check=True, capture_output=True, text=True)
+    head_commit = subprocess.run(
+        [GIT, "rev-parse", "HEAD"],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
 
     result = subprocess.run(
         [BASH, str(target_script)],
@@ -56,6 +79,19 @@ def test_new_run_generates_only_run_id_env_and_per_run_secret_files(tmp_path):
     run_id = env_lines[0].split("=", 1)[1]
     assert run_id
     assert f"RUN_ID={run_id}" in result.stdout
+
+    run_meta = json.loads((repo_root / "runs" / run_id / "state" / "run_meta.json").read_text(encoding="utf-8"))
+    assert run_meta["run_id"] == run_id
+    assert run_meta["git_commit"] == head_commit
+    assert run_meta["created_at"].endswith("Z")
+
+    shared_dirs = {"pcap", "logs", "results", "state"}
+    if os.name == "posix":
+        for directory_name in shared_dirs:
+            mode = stat.S_IMODE((repo_root / "runs" / run_id / directory_name).stat().st_mode)
+            assert mode == 0o1777
+        secrets_mode = stat.S_IMODE((repo_root / "runs" / run_id / "secrets").stat().st_mode)
+        assert secrets_mode == 0o700
 
     secrets_dir = repo_root / "runs" / run_id / "secrets"
     secret_files = {
