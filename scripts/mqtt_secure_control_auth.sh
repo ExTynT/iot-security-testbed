@@ -3,10 +3,11 @@
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")/.."
+source scripts/run_secrets.sh
 
-MQTT_CTRL_USER="${MQTT_CTRL_USER:-$(grep '^MQTT_CTRL_USER=' .env | cut -d= -f2-)}"
-MQTT_CTRL_PASS="${MQTT_CTRL_PASS:-$(grep '^MQTT_CTRL_PASS=' .env | cut -d= -f2-)}"
-RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
+MQTT_CTRL_USER="${MQTT_CTRL_USER:-controller01}"
+RUN_ID="$(require_run_id)"
+MQTT_CTRL_PASS="${MQTT_CTRL_PASS:-$(read_run_secret mqtt_controller_password.txt "$RUN_ID")}"
 LOGF="runs/${RUN_ID}/logs/attacks.log"
 CTRL_LOG="runs/${RUN_ID}/logs/mqtt_control.log"
 

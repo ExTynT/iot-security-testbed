@@ -54,6 +54,27 @@ def assert_validation_error(reason, action):
     assert exc_info.value.reason == reason
 
 
+def test_read_secret_value_uses_file_when_present(tmp_path):
+    secret_path = tmp_path / "mqtt_device_password.txt"
+    secret_path.write_text("abc123\n", encoding="utf-8")
+
+    value = dut.read_secret_value("", file_path=str(secret_path))
+
+    assert value == "abc123"
+
+
+def test_load_minisign_pubkey_reads_second_line_from_pub_file(tmp_path):
+    pubkey_path = tmp_path / "minisign.pub"
+    pubkey_path.write_text(
+        "untrusted comment: minisign public key\nRWSTESTPUBLICKEY1234567890\n",
+        encoding="utf-8",
+    )
+
+    value = dut.load_minisign_pubkey(pubkey="", pubkey_path=str(pubkey_path))
+
+    assert value == "RWSTESTPUBLICKEY1234567890"
+
+
 def test_write_version_state_creates_missing_parent_dir(tmp_path):
     version_path = tmp_path / "nested" / "state" / "version.json"
 

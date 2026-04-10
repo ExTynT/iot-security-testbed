@@ -9,11 +9,11 @@ from datetime import datetime, timezone
 MQTT_HOST = os.getenv("MQTT_HOST", "mosquitto")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USER = os.getenv("MQTT_USER", "")
-MQTT_PASS = os.getenv("MQTT_PASS", "")
+MQTT_PASS_FILE = os.getenv("MQTT_PASS_FILE", "").strip()
 MQTT_TLS_CA = os.getenv("MQTT_TLS_CA", "").strip()
 
-OTA_BASE = os.getenv("OTA_BASE", "http://ota")
-MINISIGN_PUBKEY = os.getenv("MINISIGN_PUBKEY", "").strip()
+OTA_BASE = os.getenv("OTA_BASE", "http://ota:8080")
+MINISIGN_PUBKEY_FILE = os.getenv("MINISIGN_PUBKEY_FILE", "").strip()
 
 STATE_DIR = "/state"
 VERSION_JSON_FILE = f"{STATE_DIR}/version.json"
@@ -29,6 +29,46 @@ class OTAValidationError(Exception):
         super().__init__(detail or reason)
         self.reason = reason
         self.detail = detail
+
+
+def read_secret_value(value="", file_path=""):
+    secret_value = str(value).strip()
+    if secret_value:
+        return secret_value
+
+    if not file_path:
+        return ""
+
+    try:
+        with open(file_path, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return ""
+
+
+def load_minisign_pubkey(pubkey="", pubkey_path=""):
+    pubkey_value = str(pubkey).strip()
+    if pubkey_value:
+        return pubkey_value
+
+    if not pubkey_path:
+        return ""
+
+    try:
+        with open(pubkey_path, encoding="utf-8") as handle:
+            lines = [line.strip() for line in handle.readlines() if line.strip()]
+    except OSError:
+        return ""
+
+    if not lines:
+        return ""
+    if len(lines) >= 2 and lines[0].lower().startswith("untrusted comment"):
+        return lines[1]
+    return lines[0]
+
+
+MQTT_PASS = read_secret_value(os.getenv("MQTT_PASS", ""), MQTT_PASS_FILE)
+MINISIGN_PUBKEY = load_minisign_pubkey(os.getenv("MINISIGN_PUBKEY", "").strip(), MINISIGN_PUBKEY_FILE)
 
 
 def ensure_parent_dir(path):

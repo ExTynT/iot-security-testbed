@@ -3,17 +3,38 @@
 #   docker compose -f docker-compose.yml -f docker-compose.mqtt-secure.yml up -d
 services:
   mosquitto:
+    command:
+      - /bin/sh
+      - /bootstrap/mosquitto_secure_bootstrap.sh
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mqtt_device_password="$$(tr -d '\r\n' < /run/secrets/mqtt_device_password)" &&
+          mosquitto_pub -h mosquitto -p 8883 --cafile /mosquitto/config/certs/ca.crt
+          -u device01 -P "$$mqtt_device_password" -t telemetry/health -m ok >/dev/null 2>&1
+    secrets:
+      - mqtt_device_password
+      - mqtt_controller_password
     volumes:
+      - ./scripts/mosquitto_secure_bootstrap.sh:/bootstrap/mosquitto_secure_bootstrap.sh:ro
       - ./configs/mqtt/secure/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./configs/mqtt/secure/aclfile:/mosquitto/config/aclfile:ro
-      - ./configs/mqtt/secure/passwd:/mosquitto/config/passwd:ro
       - ./configs/mqtt/secure/certs:/mosquitto/config/certs:ro
 
   dut:
     environment:
       - MQTT_PORT=8883
       - MQTT_USER=device01
-      - MQTT_PASS=${MQTT_PASS}
+      - MQTT_PASS_FILE=/run/secrets/mqtt_device_password
       - MQTT_TLS_CA=/certs/ca.crt
+    secrets:
+      - mqtt_device_password
     volumes:
       - ./configs/mqtt/secure/certs/ca.crt:/certs/ca.crt:ro
+
+secrets:
+  mqtt_device_password:
+    file: ./runs/${RUN_ID}/secrets/mqtt_device_password.txt
+  mqtt_controller_password:
+    file: ./runs/${RUN_ID}/secrets/mqtt_controller_password.txt

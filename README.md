@@ -59,22 +59,22 @@ cd iot-security-testbed
 docker compose build
 ```
 
-### 2. Vygenerovanie MQTT hesiel
+### 2. Inicializacia noveho runu a per-run secrets
 
 ```bash
-make gen-passwd
+bash scripts/new_run.sh
 ```
 
-Fallback bez `make`:
+Skript vytvori `.env` iba s `RUN_ID` a zaroven vygeneruje per-run secret subory:
 
-```bash
-bash scripts/gen_mqtt_passwd.sh
-```
+- `runs/<run_id>/secrets/mqtt_device_password.txt`
+- `runs/<run_id>/secrets/mqtt_controller_password.txt`
+- `runs/<run_id>/secrets/coap_psk.txt`
 
-Generované identity:
+Nesenzitivne identity ostavaju pevne:
 
-- `device01` / `device01pass`
-- `controller01` / `controller01pass`
+- `device01`
+- `controller01`
 
 ### 3. Spustenie scenárov
 
@@ -105,12 +105,13 @@ bash scripts/run_case.sh ota-secure
 Každý scenár vykoná rovnaký high-level workflow:
 
 1. vytvorenie nového `run_id`
-2. zápis `scenario.txt`
-3. `docker compose up -d`
-4. `wait_ready.sh`
-5. útokové a kontrolné skripty
-6. zber artefaktov cez `monitor-collector`
-7. `docker compose down --remove-orphans`
+2. vygenerovanie per-run secret suborov
+3. zápis `scenario.txt`
+4. `docker compose up -d`
+5. `wait_ready.sh`
+6. útokové a kontrolné skripty
+7. zber artefaktov cez `monitor-collector`
+8. `docker compose down --remove-orphans`
 
 ### 4. Replikácie
 
@@ -268,10 +269,10 @@ GitHub Actions workflow `.github/workflows/ci.yml` spusta presne tieto tri vrstv
 
 | Problém | Riešenie |
 |---|---|
-| `mqtt-secure` zlyhá na `passwd` | spusti `make gen-passwd` |
+| `mqtt-secure` zlyhá na `passwd` | spusti `bash scripts/new_run.sh`, over existenciu `runs/<run_id>/secrets/*.txt` a scenár spusť znova |
 | chceš spustiť len jeden scenár bez `make` | použi `bash scripts/run_case.sh <scenár>` |
 | `make` nie je nainštalované | použi fallback príkazy uvedené vyššie |
-| `ota-secure` nemá public key | helpery ho doplnia automaticky; `set_minisign_pubkey.sh` je nízkoúrovňový helper |
+| `ota-secure` nemá public key | over, že existuje `configs/ota/minisign.pub`; public key sa číta priamo z tohto read-only config súboru |
 | CoAP secure visí príliš dlho | používaj aktuálne skripty s `timeout`, nie staré helpery |
 | staršie poznámky ukazujú iný workflow | referenčný workflow je tento README + `Makefile` + `wait_ready.sh` |
 

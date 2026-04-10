@@ -1,13 +1,13 @@
-# OTA Secure overlay: minisign overenie podpisu (pinned public key)
-# Použitie:
+# OTA Secure overlay: minisign overenie podpisu cez pinned public key file
+# Pouzitie:
 #   docker compose -f docker-compose.yml -f docker-compose.ota-secure.yml up -d
 #
 # Prerekvizita:
-#   1. Vygeneruj kľúče:  minisign -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
-#   2. Podpíš manifest:  minisign -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json
-#   3. Do .env vlož obsah minisign.pub (druhý riadok – base64 public key):
-#      MINISIGN_PUBKEY=RWS...
+#   1. Vygeneruj kluce:   minisign -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
+#   2. Podpis manifest:  minisign -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json
 services:
   dut:
     environment:
-      - MINISIGN_PUBKEY=${MINISIGN_PUBKEY}
+      - MINISIGN_PUBKEY_FILE=/config/minisign.pub
+    volumes:
+      - ./configs/ota/minisign.pub:/config/minisign.pub:ro

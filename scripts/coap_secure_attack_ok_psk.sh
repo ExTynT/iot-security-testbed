@@ -1,30 +1,28 @@
 #!/usr/bin/env bash
-# CoAP Secure – kontrolný beh so správnym PSK (dôkaz, že služba funguje)
-# Očakávaný výsledok: USPECH (DTLS handshake + CoAP 2.05 odpoveď)
-# Spustiť po: docker compose -f docker-compose.yml -f docker-compose.coap-secure.yml up -d
+# CoAP Secure - kontrolny beh so spravnym PSK
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/run_secrets.sh
 
-COAP_PSK="${COAP_PSK:-$(grep '^COAP_PSK=' .env | cut -d= -f2-)}"
-COAP_PSK_IDENTITY="${COAP_PSK_IDENTITY:-$(grep '^COAP_PSK_IDENTITY=' .env | cut -d= -f2-)}"
-
-echo "=== CoAP SECURE – kontrolný beh (správny PSK) ==="
-echo ""
-RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
+RUN_ID="$(require_run_id)"
+COAP_PSK="${COAP_PSK:-$(read_run_secret coap_psk.txt "$RUN_ID")}"
+COAP_PSK_IDENTITY="${COAP_PSK_IDENTITY:-device01}"
 LOGF="runs/${RUN_ID}/logs/attacks.log"
 OUTLOG="runs/${RUN_ID}/logs/coap_dtls_ok.log"
 
 : > "$OUTLOG"
 
+echo "=== CoAP SECURE - kontrolny beh (spravny PSK) ==="
+echo ""
 echo "[1] Legitímny klient DTLS connect (identity='$COAP_PSK_IDENTITY')..."
 OUT=$(docker compose exec -T attacker \
   coap-dtls-psk coap 5684 "$COAP_PSK_IDENTITY" "$COAP_PSK" 2>&1 || true)
 printf '%s\n' "$OUT" | tee -a "$OUTLOG"
 if echo "$OUT" | grep -q "CoAP response 2.05"; then
-  echo ">>> USPECH – DTLS session nadviazaná, CoAP GET odpoveď prijatá"
+  echo ">>> USPECH - DTLS session nadviazana, CoAP GET odpoved prijata"
   echo "P2_coap_dtls_ok 1" >> "$LOGF"
 else
-  echo ">>> VAROVANIE – správny PSK bol odmietnutý (neočakávané)"
+  echo ">>> VAROVANIE - spravny PSK bol odmietnuty"
 fi
 echo ""
 echo "=== VYSLEDOK: USPECH (KPI: P2 dtls_auth_ok=1) ==="
