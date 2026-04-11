@@ -1,0 +1,2 @@
+GET /manifest.json
+GET /firmware.bin

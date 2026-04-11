@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it using the metadata from this file."
+title: "IoT Security Testbed"
+type: software
+authors:
+  - given-names: "Ivan"
+    family-names: "Klopček"
+    alias: "ExTynT"
+repository-code: "https://github.com/ExTynT/iot-security-testbed"
+url: "https://github.com/ExTynT/iot-security-testbed"
+license: "MIT"
+keywords:
+  - "iot"
+  - "security"
+  - "docker"
+  - "mqtt"
+  - "coap"
+  - "ota"
+abstract: >
+  Docker-based academic IoT security testbed for reproducible baseline and secure
+  experiments covering MQTT, CoAP, and OTA update scenarios with per-run evidence artifacts.

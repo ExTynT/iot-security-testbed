@@ -1,16 +1,49 @@
+"""Zber a sumarizácia artefaktov z jedného behu testbedu.
+
+Modul číta logy, stavové súbory a PCAP artefakty z adresárovej štruktúry
+jedného runu a vytvára z nich `summary.json`, `report.md` a voliteľný KPI graf.
+Výstup je určený pre audit behov aj pre následnú agregovanú analýzu.
+"""
+
 import json
 import os
 import re
 import sys
 import time
+from datetime import datetime, timezone
 
 LOGS = "/logs"
 RESULTS = "/results"
 STATE = "/state"
 PCAP = "/pcap"
+SCHEMA_VERSION = "1.0.0"
+
+SCENARIO_COMPOSE_FILES = {
+    "mqtt-baseline": ["docker-compose.yml"],
+    "mqtt-secure": ["docker-compose.yml", "docker-compose.mqtt-secure.yml"],
+    "coap-baseline": ["docker-compose.yml"],
+    "coap-secure": ["docker-compose.yml", "docker-compose.coap-secure.yml"],
+    "ota-baseline": ["docker-compose.yml"],
+    "ota-secure": ["docker-compose.yml", "docker-compose.ota-secure.yml"],
+}
+RUN_ID_RE = re.compile(r"^\d{8}-\d{6}$")
 
 
 def read(path, warn_missing=True):
+    """Načíta textový súbor a pri chybe vráti prázdny reťazec.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        Cesta k načítavanému súboru.
+    warn_missing : bool, default=True
+        Ak je `True`, pri chýbajúcom súbore vypíše warning na stderr.
+
+    Returns
+    -------
+    str
+        Obsah súboru alebo prázdny reťazec pri chybe.
+    """
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as handle:
             return handle.read()
@@ -24,10 +57,12 @@ def read(path, warn_missing=True):
 
 
 def read_optional(path):
+    """Načíta voliteľný textový súbor bez výpisu warningu."""
     return read(path, warn_missing=False)
 
 
 def file_size(path):
+    """Vráti veľkosť súboru v bajtoch alebo nulu pri chybe."""
     try:
         return os.path.getsize(path)
     except OSError:
@@ -35,6 +70,11 @@ def file_size(path):
 
 
 def read_state_version(state_dir=STATE):
+    """Načíta verziu DUT zo stavového adresára.
+
+    Preferuje novší formát `version.json`, ale zachováva kompatibilitu aj so
+    starším `version.txt`.
+    """
     version_json = read_optional(f"{state_dir}/version.json").strip()
     if version_json:
         try:
@@ -47,7 +87,131 @@ def read_state_version(state_dir=STATE):
     return read_optional(f"{state_dir}/version.txt").strip()
 
 
+def utc_now_iso():
+    """Vráti aktuálny UTC čas v stabilnom ISO 8601 formáte."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def infer_run_id_from_state_dir(state_dir):
+    """Odvodí `run_id` z nadradeného adresára `state/`."""
+    state_path = os.path.abspath(os.fspath(state_dir))
+    run_id = os.path.basename(os.path.dirname(state_path))
+    if RUN_ID_RE.match(run_id):
+        return run_id
+    return ""
+
+
+def infer_created_at_from_run_id(run_id):
+    """Prepočíta timestamp z `run_id` na ISO 8601 UTC čas."""
+    if not RUN_ID_RE.match(run_id):
+        return ""
+    try:
+        parsed = datetime.strptime(run_id, "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return ""
+    return parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def read_run_meta(state_dir=STATE):
+    """Načíta provenienčné metadáta runu.
+
+    Parameters
+    ----------
+    state_dir : str, default=STATE
+        Cesta k adresáru `state/`.
+
+    Returns
+    -------
+    dict
+        Metadáta s kľúčmi `run_id`, `git_commit` a `created_at`. Ak
+        `run_meta.json` neexistuje alebo je poškodený, vracajú sa inferované
+        alebo bezpečné fallback hodnoty.
+    """
+    inferred_run_id = infer_run_id_from_state_dir(state_dir)
+    inferred_created_at = infer_created_at_from_run_id(inferred_run_id)
+    metadata = {
+        "run_id": inferred_run_id or "unknown-run",
+        "git_commit": "unknown",
+        "created_at": inferred_created_at or utc_now_iso(),
+    }
+    raw = read_optional(f"{state_dir}/run_meta.json").strip()
+    if not raw:
+        return metadata
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return metadata
+
+    run_id = str(parsed.get("run_id", "")).strip()
+    git_commit = str(parsed.get("git_commit", "")).strip()
+    created_at = str(parsed.get("created_at", "")).strip()
+    if run_id:
+        metadata["run_id"] = run_id
+    if git_commit:
+        metadata["git_commit"] = git_commit
+    if created_at:
+        metadata["created_at"] = created_at
+    else:
+        inferred_created_at = infer_created_at_from_run_id(metadata["run_id"])
+        if inferred_created_at:
+            metadata["created_at"] = inferred_created_at
+    return metadata
+
+
+def profile_for_scenario(scenario):
+    """Preloží názov scenára na profil `baseline` alebo `secure`."""
+    if scenario.endswith("-baseline"):
+        return "baseline"
+    if scenario.endswith("-secure"):
+        return "secure"
+    return "unknown"
+
+
+def compose_files_for_scenario(scenario):
+    """Vráti predvolený zoznam Compose súborov pre daný scenár."""
+    compose_files = SCENARIO_COMPOSE_FILES.get(scenario)
+    if compose_files:
+        return compose_files
+    return ["docker-compose.yml"]
+
+
+def read_compose_files(state_dir=STATE):
+    """Načíta použité Compose súbory z `state/compose_files.txt`.
+
+    Ak súbor neexistuje, použije deterministicý fallback odvodený zo scenára.
+    """
+    compose_files = [
+        line.strip()
+        for line in read_optional(f"{state_dir}/compose_files.txt").splitlines()
+        if line.strip()
+    ]
+    if compose_files:
+        return compose_files
+
+    scenario = read_optional(f"{state_dir}/scenario.txt").strip()
+    return compose_files_for_scenario(scenario)
+
+
 def parse_mqtt(scenario, mqtt_log="", attacks_log="", mqtt_control_log=""):
+    """Vyhodnotí MQTT KPI a doplnkové warningy pre jeden beh.
+
+    Parameters
+    ----------
+    scenario : str
+        Názov scenára, napríklad `mqtt-baseline` alebo `mqtt-secure`.
+    mqtt_log : str, default=""
+        Obsah logu brokeru.
+    attacks_log : str, default=""
+        Obsah centrálneho logu útokov.
+    mqtt_control_log : str, default=""
+        Obsah logu kontrolného autorizovaného klienta.
+
+    Returns
+    -------
+    dict
+        Slovník so sekciami `kpi`, `warnings`, `evidence` a `raw`.
+    """
     warnings = []
     if scenario == "mqtt-secure" and not mqtt_control_log:
         warnings.append("mqtt_control_log_missing")
@@ -102,6 +266,13 @@ def parse_coap(
     coap_dtls_wrong_psk_log="",
     coap_dtls_ok_log="",
 ):
+    """Vyhodnotí CoAP a DTLS/PSK KPI pre jeden beh.
+
+    Returns
+    -------
+    dict
+        Slovník so sekciami `kpi`, `warnings`, `evidence` a `raw`.
+    """
     warnings = []
     if scenario == "coap-secure" and not coap_plain_probe_log:
         warnings.append("coap_plain_probe_log_missing")
@@ -167,6 +338,13 @@ def parse_ota(
     ota_control_log="",
     ota_attack_log="",
 ):
+    """Vyhodnotí OTA artefakty a odvodí výsledok útoku alebo kontroly.
+
+    Returns
+    -------
+    dict
+        Slovník so sekciami `kpi`, `warnings`, `evidence`, `raw` a `dut`.
+    """
     warnings = []
     if scenario in {"ota-baseline", "ota-secure"} and not ota_access_log:
         warnings.append("ota_access_log_missing")
@@ -264,9 +442,40 @@ def parse_ota(
     }
 
 
-def build_summary(scenario, logs=None, state_version="", pcap_bytes=None):
+def build_summary(
+    scenario,
+    logs=None,
+    state_version="",
+    pcap_bytes=None,
+    run_metadata=None,
+    compose_files=None,
+):
+    """Zostaví finálny `summary.json` pre jeden run.
+
+    Parameters
+    ----------
+    scenario : str
+        Názov vykonaného scenára.
+    logs : dict, optional
+        Mapovanie názvov logov na ich textový obsah.
+    state_version : str, default=""
+        Verzia DUT načítaná zo stavových súborov.
+    pcap_bytes : dict, optional
+        Veľkosti PCAP súborov v bajtoch.
+    run_metadata : dict, optional
+        Provenienčné metadáta runu.
+    compose_files : list[str], optional
+        Zoznam použitých Compose súborov.
+
+    Returns
+    -------
+    dict
+        Kompletný serializovateľný slovník pre `summary.json`.
+    """
     logs = logs or {}
     pcap_bytes = pcap_bytes or {}
+    run_metadata = run_metadata or {}
+    compose_files = compose_files or compose_files_for_scenario(scenario)
 
     mqtt_result = parse_mqtt(
         scenario=scenario,
@@ -298,6 +507,14 @@ def build_summary(scenario, logs=None, state_version="", pcap_bytes=None):
     }
 
     return {
+        "meta": {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": str(run_metadata.get("run_id", "unknown-run")),
+            "profile": profile_for_scenario(scenario),
+            "git_commit": str(run_metadata.get("git_commit", "unknown")),
+            "created_at": str(run_metadata.get("created_at", utc_now_iso())),
+            "compose_files": compose_files,
+        },
         "scenario": scenario,
         "kpi": kpi,
         "warnings": mqtt_result["warnings"] + coap_result["warnings"] + ota_result["warnings"],
@@ -334,13 +551,19 @@ def build_summary(scenario, logs=None, state_version="", pcap_bytes=None):
 
 
 def build_report(summary):
+    """Vytvorí Markdown report odvodený zo summary dát."""
     scenario = summary["scenario"]
+    meta = summary["meta"]
     kpi = summary["kpi"]
     json_out = json.dumps(summary, indent=2, ensure_ascii=False)
 
     return f"""# IoT Security Testbed - Run Report
 
 **Scenar:** `{scenario}`
+**Run ID:** `{meta['run_id']}`
+**Profil:** `{meta['profile']}`
+**Git commit:** `{meta['git_commit']}`
+**Vytvorene:** `{meta['created_at']}`
 
 ## KPI
 
@@ -364,6 +587,13 @@ def build_report(summary):
 
 
 def render_figure(summary, results_dir=RESULTS):
+    """Vygeneruje KPI graf pre scenár, ak je dostupný matplotlib.
+
+    Returns
+    -------
+    bool
+        `True`, ak bol graf vytvorený, inak `False`.
+    """
     scenario = summary["scenario"]
     kpi = summary["kpi"]
 
@@ -386,7 +616,7 @@ def render_figure(summary, results_dir=RESULTS):
             ("P2_coap_plain_gets", "Plaintext GETs\n(ocakavane: >0)", lambda value: value > 0),
         ],
         "coap-secure": [
-            ("P2_coap_plain_blocked", "Port 5683 blokovany\n(ocakavane: >0)", lambda value: value > 0),
+            ("P2_coap_plain_blocked", "Plaintext endpoint disabled\n(ocakavane: >0)", lambda value: value > 0),
             ("P2_coap_dtls_failures", "DTLS zly PSK odmietnuty\n(ocakavane: >=1)", lambda value: value >= 1),
             ("P2_coap_dtls_ok", "DTLS spravny PSK OK\n(ocakavane: 1)", lambda value: value >= 1),
         ],
@@ -444,6 +674,14 @@ def render_figure(summary, results_dir=RESULTS):
 
 
 def load_collection_inputs(logs_dir=LOGS, state_dir=STATE, pcap_dir=PCAP):
+    """Načíta všetky vstupy potrebné pre kolektor.
+
+    Returns
+    -------
+    tuple
+        Šestica `(scenario, logs, state_version, pcap_bytes, run_metadata,
+        compose_files)`.
+    """
     scenario = read(f"{state_dir}/scenario.txt").strip() or "unknown"
     logs = {
         "mqtt.log": read_optional(f"{logs_dir}/mqtt.log"),
@@ -461,16 +699,19 @@ def load_collection_inputs(logs_dir=LOGS, state_dir=STATE, pcap_dir=PCAP):
         "ota_attack.log": read_optional(f"{logs_dir}/ota_attack.log"),
     }
     state_version = read_state_version(state_dir)
+    run_metadata = read_run_meta(state_dir)
+    compose_files = read_compose_files(state_dir)
     pcap_bytes = {
         "mqtt": file_size(f"{pcap_dir}/mqtt.pcap"),
         "coap": file_size(f"{pcap_dir}/coap.pcap"),
         "ota": file_size(f"{pcap_dir}/ota.pcap"),
         "ota_evil": file_size(f"{pcap_dir}/ota_evil.pcap"),
     }
-    return scenario, logs, state_version, pcap_bytes
+    return scenario, logs, state_version, pcap_bytes, run_metadata, compose_files
 
 
 def write_outputs(summary, results_dir=RESULTS):
+    """Zapíše `summary.json` a `report.md` do výsledkového adresára."""
     os.makedirs(results_dir, exist_ok=True)
 
     json_out = json.dumps(summary, indent=2, ensure_ascii=False)
@@ -483,12 +724,15 @@ def write_outputs(summary, results_dir=RESULTS):
 
 
 def main():
-    scenario, logs, state_version, pcap_bytes = load_collection_inputs()
+    """Spustí zber artefaktov a vytvorí výsledné súbory kolektora."""
+    scenario, logs, state_version, pcap_bytes, run_metadata, compose_files = load_collection_inputs()
     summary = build_summary(
         scenario=scenario,
         logs=logs,
         state_version=state_version,
         pcap_bytes=pcap_bytes,
+        run_metadata=run_metadata,
+        compose_files=compose_files,
     )
 
     write_outputs(summary)

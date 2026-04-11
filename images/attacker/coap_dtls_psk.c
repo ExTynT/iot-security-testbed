@@ -1,13 +1,14 @@
 /*
- * coap_dtls_psk.c – Minimal CoAP GET /.well-known/core over DTLS/PSK.
+ * coap_dtls_psk.c - Minimalny CoAP GET /.well-known/core cez DTLS/PSK.
  *
- * Uses OpenSSL directly for reliable DTLS/PSK without libcoap client-side bugs.
- * Demonstrates authentication in the IoT Security Testbed (bachelor thesis).
+ * Klient pouziva OpenSSL priamo, aby mal reprodukovatelne DTLS/PSK spravanie
+ * aj v pripadoch, kde libcoap klientska implementacia zlyhava.
  *
- * Exit: 0 = DTLS handshake + CoAP response OK
- *        1 = failure (wrong PSK / network error)
+ * Navratove kody:
+ *   0 = DTLS handshake aj CoAP odpoved prebehli uspesne
+ *   1 = zlyhanie (zly PSK alebo sietova chyba)
  *
- * Usage: coap-dtls-psk <host> <port> <identity> <psk>
+ * Pouzitie: coap-dtls-psk <host> <port> <identity> <psk>
  */
 #include <stdio.h>
 #include <string.h>
@@ -34,7 +35,7 @@ static unsigned int psk_cb(SSL *ssl, const char *hint,
     return n;
 }
 
-/* CoAP 1.0 CON GET /.well-known/core (MID=1) */
+/* CoAP 1.0 ramce CON GET /.well-known/core (MID=1). */
 static const unsigned char coap_get[] = {
     0x40, 0x01, 0x00, 0x01,                          /* VER=1 T=CON TKL=0 GET MID=1 */
     0xBB, '.','w','e','l','l','-','k','n','o','w','n', /* Uri-Path delta=11 len=11 */

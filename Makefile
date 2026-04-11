@@ -3,6 +3,7 @@ BASE    = -f docker-compose.yml
 MQTT_S  = -f docker-compose.yml -f docker-compose.mqtt-secure.yml
 COAP_S  = -f docker-compose.yml -f docker-compose.coap-secure.yml
 OTA_S   = -f docker-compose.yml -f docker-compose.ota-secure.yml
+MINISIGN_BIN ?= minisign
 
 ifeq ($(OS),Windows_NT)
 BASH ?= "C:/Program Files/Git/bin/bash.exe"
@@ -20,7 +21,7 @@ N ?= 3
         gen-passwd report analyze analyze-final clean help lint test smoke-ci \
         replicate-mqtt replicate-coap replicate-ota
 
-# ─── Build všetkých imidžov ───────────────────────────────────────────────────
+# ─── Zostavenie všetkých imidžov ──────────────────────────────────────────────
 build:
 	$(COMPOSE) $(BASE) build
 
@@ -28,10 +29,11 @@ build:
 mqtt-baseline:
 	scripts/new_run.sh
 	@echo "mqtt-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh mqtt-baseline
 	bash scripts/mqtt_baseline_attack.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(BASE) down --remove-orphans
 
@@ -39,11 +41,12 @@ mqtt-baseline:
 mqtt-secure:
 	scripts/new_run.sh
 	@echo "mqtt-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml docker-compose.mqtt-secure.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(MQTT_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh mqtt-secure
 	bash scripts/mqtt_secure_attack_unauth.sh
 	bash scripts/mqtt_secure_control_auth.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(MQTT_S) down --remove-orphans
 
@@ -51,23 +54,25 @@ mqtt-secure:
 coap-baseline:
 	scripts/new_run.sh
 	@echo "coap-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh coap-baseline
 	bash scripts/coap_baseline_attack.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(BASE) down --remove-orphans
 
-# ─── CoAP Secure (P2 – DTLS/PSK, 5683 blokovaný) ────────────────────────────
+# ─── CoAP Secure (P2 – DTLS/PSK, nešifrovaný endpoint 5683 vypnutý) ──────────
 coap-secure:
 	scripts/new_run.sh
 	@echo "coap-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml docker-compose.coap-secure.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(COAP_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh coap-secure
 	bash scripts/coap_secure_attack_plain_should_fail.sh
 	bash scripts/coap_secure_attack_wrong_psk.sh
 	bash scripts/coap_secure_attack_ok_psk.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(COAP_S) down --remove-orphans
 
@@ -75,10 +80,11 @@ coap-secure:
 ota-baseline:
 	scripts/new_run.sh
 	@echo "ota-baseline" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(BASE) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh ota-baseline
 	bash scripts/ota_attack_evil.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(BASE) down --remove-orphans
 
@@ -86,20 +92,21 @@ ota-baseline:
 ota-secure: _ota-keys
 	scripts/new_run.sh
 	@echo "ota-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
+	@printf '%s\n' docker-compose.yml docker-compose.ota-secure.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
 	$(COMPOSE) $(OTA_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh ota-secure
 	bash scripts/ota_secure_control_signed.sh
 	bash scripts/ota_attack_evil.sh
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Artefakty: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/{logs,pcap,results}"
 	$(COMPOSE) $(OTA_S) down --remove-orphans
 
 # ─── Generovanie minisign kľúčov (ak ešte neexistujú) ────────────────────────
 _ota-keys:
 	@test -f configs/ota/minisign.pub || \
-	  (printf '\n\n' | tools/minisign/minisign-win64/minisign.exe \
+	  (printf '\n\n' | "$(MINISIGN_BIN)" \
 	    -G -p configs/ota/minisign.pub -s configs/ota/minisign.key)
-	@printf '\n' | tools/minisign/minisign-win64/minisign.exe \
+	@printf '\n' | "$(MINISIGN_BIN)" \
 	  -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json > /dev/null
 
 # ─── Replikácie (N opakovaní každého scenára) ─────────────────────────────────
@@ -149,11 +156,11 @@ logs:
 	$(COMPOSE) $(BASE) logs --tail=200
 
 report:
-	docker compose run --rm monitor-collector
+	docker compose run --rm --build monitor-collector
 	@echo "Výsledky: runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/results/"
 
 lint:
-	python -m ruff check images/monitor-collector/collector.py tests
+	python -m ruff check images/monitor-collector/collector.py images/monitor-collector/analyze_results.py tests
 
 test:
 	python -m pytest tests -q
@@ -165,10 +172,13 @@ smoke-ci:
 		bash scripts/new_run.sh; \
 		run_id=$$(grep "^RUN_ID=" .env | cut -d= -f2); \
 		echo "mqtt-baseline" > "runs/$$run_id/state/scenario.txt"; \
+		printf '\''%s\n'\'' docker-compose.yml > "runs/$$run_id/state/compose_files.txt"; \
 		docker compose $(BASE) up -d --build --wait --wait-timeout 90; \
 		bash scripts/wait_ready.sh mqtt-baseline; \
 		bash scripts/wait_ready.sh coap-baseline; \
-		bash scripts/smoke_test.sh'
+		bash scripts/smoke_test.sh; \
+		docker compose $(BASE) run --rm --build monitor-collector; \
+		SMOKE_EXPECT_RESULTS=1 bash scripts/smoke_test.sh'
 
 analyze:
 	$(BASH) -lc "cd . && ANALYZE_OUTPUT_PATH=runs/analysis.md ANALYZE_FIGURES_SUBDIR=figures bash scripts/analyze_runs.sh"

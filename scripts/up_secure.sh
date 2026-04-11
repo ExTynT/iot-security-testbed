@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Generic secure start for all overlays.
-# For reproducible thesis scenarios prefer Makefile targets or scripts/_run_all.sh.
+# Všeobecné spustenie všetkých secure overlayov naraz.
+# Pre reprodukovateľné thesis scenáre preferuj Makefile targety alebo scripts/_run_all.sh.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,0 +1,86 @@
+{
+  "meta": {
+    "schema_version": "1.0.0",
+    "run_id": "fixture-mqtt-baseline-001",
+    "profile": "baseline",
+    "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-04-10T10:00:00Z",
+    "compose_files": [
+      "docker-compose.yml"
+    ]
+  },
+  "scenario": "mqtt-baseline",
+  "kpi": {
+    "P1_mqtt_unauth_denied": 0,
+    "P1_mqtt_unauth_success": 1,
+    "P2_coap_plain_gets": 0,
+    "P2_coap_plain_blocked": 0,
+    "P2_coap_dtls_failures": 0,
+    "P2_coap_dtls_ok": 0,
+    "P3_ota_evil_applied": 0,
+    "P3_ota_evil_blocked": 0,
+    "P3_ota_signed_ok": 0
+  },
+  "warnings": [],
+  "evidence": {
+    "P1_mqtt_unauth_success": "mqtt.log cmd/ota publish",
+    "P1_mqtt_unauth_denied": "mqtt.log CONNACK(0,5)",
+    "P2_coap_plain_gets": "coap_baseline_probe.log or coap.log",
+    "P2_coap_plain_blocked": "coap_plain_probe.log",
+    "P2_coap_dtls_failures": "coap_dtls_wrong_psk.log",
+    "P2_coap_dtls_ok": "coap_dtls_ok.log",
+    "P3_ota_evil_applied": "ota_attack.log before/after version + ota_evil access delta",
+    "P3_ota_evil_blocked": "ota_attack.log new DUT lines + ota_evil access delta",
+    "P3_ota_signed_ok": "ota_control.log signed_ok + official access delta"
+  },
+  "artifacts": {
+    "pcap_bytes": {
+      "mqtt": 128,
+      "coap": 0,
+      "ota": 0,
+      "ota_evil": 0
+    },
+    "logs_present": {
+      "mqtt_log": true,
+      "coap_log": false,
+      "dut_log": false,
+      "ota_access_log": false,
+      "ota_evil_access_log": false
+    }
+  },
+  "raw": {
+    "mqtt": {
+      "unauth_success": 1,
+      "denied": 0,
+      "published": 1,
+      "auth_write_ok": 0,
+      "auth_read_ok": 0
+    },
+    "coap": {
+      "plain_gets_received": 0,
+      "plain_blocked": 0,
+      "plain_accessible": 0,
+      "baseline_accessible": 0,
+      "plain_gets_server_log": 0,
+      "dtls_failures": 0,
+      "dtls_ok": 0
+    },
+    "ota": {
+      "http_requests": 0,
+      "evil_http_requests": 0,
+      "evil_http_delta": 0,
+      "attack_before_version": "",
+      "attack_after_version": "",
+      "control_before_version": "",
+      "control_after_version": "",
+      "control_http_delta": 0,
+      "attack_new_dut_excerpt": ""
+    },
+    "dut": {
+      "ota_applied": 0,
+      "ota_blocked": 0,
+      "ota_signed_ok": 0,
+      "state_version": "0.0.0"
+    }
+  }
+}

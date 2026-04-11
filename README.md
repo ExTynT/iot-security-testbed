@@ -1,6 +1,6 @@
 # IoT Security Testbed
 
-Kontajnerový testbed vytvorený ako praktická časť bakalárskej práce zameranej na analýzu zraniteľností zariadení internetu vecí. Repozitár slúži na reprodukovateľné porovnanie `baseline` a `secure` profilov v troch oblastiach: `MQTT`, `CoAP` a `OTA` aktualizácie.
+Kontajnerový testbed vytvorený ako praktická časť bakalárskej práce zameranej na analýzu zraniteľností zariadení internetu vecí. Repozitár slúži na reprodukovateľné porovnanie profilov `baseline` a `secure` v troch oblastiach: `MQTT`, `CoAP` a `OTA` aktualizácie.
 
 ## Účel projektu
 
@@ -8,17 +8,25 @@ Testbed overuje, ako sa po aktivácii vybraných bezpečnostných opatrení men�
 
 Projekt neslúži ako dôkaz všeobecnej bezpečnosti IoT zariadení. Jeho cieľom je experimentálne demonštrovať účinok konkrétnych mitigácií pri zachovaní rovnakej topológie, rovnakej implementácie a porovnateľného workflowu behov.
 
+## Kľúčové vlastnosti
+
+- pevná Docker Compose topológia pre porovnanie `baseline` a `secure` profilov
+- samostatné scenáre pre `MQTT`, `CoAP` a `OTA` s konzistentným artefaktovým modelom
+- per-run proveniencia cez `run_id`, `git_commit`, `created_at` a `compose_files`
+- schémovo fixovaný export `summary.json` validovaný proti `schemas/summary.schema.json`
+- agregovaná analýza s textovým reportom, grafmi a strojovo čitateľným JSON výstupom
+
 ## Testované scenáre
 
 | Oblasť | Baseline profil | Secure profil | Očakávaný efekt |
 |---|---|---|---|
 | MQTT | Broker bez TLS a bez autentifikácie na porte `1883` | TLS na porte `8883`, heslá, ACL | Neautorizovaný publish je odmietnutý a autorizovaný controller ostáva funkčný |
-| CoAP | Plaintext CoAP na porte `5683` | DTLS/PSK na porte `5684`, port `5683` blokovaný | Plaintext je blokovaný, zlý PSK zlyhá, správny PSK uspeje |
+| CoAP | Plaintext CoAP na porte `5683` | DTLS/PSK na porte `5684`, plaintext endpoint `5683` nie je vytvorený | Plaintext je nedostupný, zlý PSK zlyhá, správny PSK uspeje |
 | OTA | Aktualizácia bez overenia podpisu | Overenie podpisu manifestu pomocou `minisign` | Podpísaná oficiálna aktualizácia uspeje, nedôveryhodná aktualizácia sa odmietne |
 
 ## Architektúra v skratke
 
-Testbed je postavený nad stabilnou Compose topológiou. Medzi `baseline` a `secure` profilmi sa nemení identita komponentov ani ich základné väzby. Mení sa iba bezpečnostná konfigurácia služieb.
+Testbed je postavený nad stabilnou Compose topológiou. Medzi profilmi `baseline` a `secure` sa nemení identita komponentov ani ich základné väzby. Mení sa iba bezpečnostná konfigurácia služieb a pridružených klientov.
 
 Hlavné komponenty:
 
@@ -29,19 +37,35 @@ Hlavné komponenty:
 - `ota_evil` - alternatívny OTA server pre neautorizovaný aktualizačný scenár
 - `attacker` - útokový a kontrolný uzol
 - `sniffer_*` - sidecar kontajnery pre pasívny zber prevádzky
-- `monitor-collector` - agregácia artefaktov a tvorba `summary.json` a `report.md`
+- `monitor-collector` - agregácia artefaktov a tvorba `summary.json`, `report.md` a `fig_kpi.png`
 
-## Požiadavky
+## Požiadavky na spustenie
 
 | Závislosť | Poznámka |
 |---|---|
 | Docker Engine + `docker compose` | povinné |
 | Git Bash alebo kompatibilný Bash | odporúčané na Windows |
 | GNU Make | odporúčané; existujú aj fallback skripty v `scripts/` |
-| `minisign` | potrebný pre `ota-secure`; aktuálne skripty na Windows očakávajú binárku v `tools/minisign/minisign-win64/minisign.exe` |
+| `minisign` | potrebný pre `ota-secure`; predvolene sa očakáva `minisign` dostupný v `PATH` |
 
-> Na Windows je najčistejší workflow cez Git Bash. `.bat` helpery slúžia iba ako kompatibilitná vrstva, nie ako referenčný workflow pre prácu.
-> Adresár `tools/` je lokálna pomocná vrstva a nie je súčasťou verziovaného obsahu repozitára. Ak clone neobsahuje `minisign`, treba ho doplniť lokálne alebo upraviť cestu v skriptoch.
+> Na Windows je najčistejší postup cez Git Bash. `.bat` helpery slúžia iba ako kompatibilitná vrstva, nie ako referenčný spôsob práce.
+> Linux/macOS: default `minisign`. Windows Git Bash: nastav `MINISIGN_BIN=/c/.../minisign.exe`.
+
+## Požiadavky na lokálny vývoj a testy
+
+Pre lokálne `lint`, `test` a časť smoke validácie je potrebný aj Python toolchain:
+
+- Python `3.12`
+- `pip`
+- balíky `pytest`, `ruff`, `jsonschema`, `pyyaml`
+
+Odporúčaný lokálny príkaz:
+
+```bash
+python -m pip install --upgrade pip pytest ruff jsonschema pyyaml
+```
+
+Referenčný CI workflow ich inštaluje priamo v `.github/workflows/ci.yml`.
 
 ## Rýchly štart
 
@@ -52,26 +76,33 @@ cd iot-security-testbed
 make build
 ```
 
-Fallback bez `make`:
+Alternatíva bez `make`:
 
 ```bash
 cd iot-security-testbed
 docker compose build
 ```
 
-### 2. Inicializacia noveho runu a per-run secrets
+### 2. Inicializácia nového runu a per-run secrets
 
 ```bash
 bash scripts/new_run.sh
 ```
 
-Skript vytvori `.env` iba s `RUN_ID` a zaroven vygeneruje per-run secret subory:
+Skript vytvorí `.env` iba s `RUN_ID` a zároveň vygeneruje per-run secret súbory:
 
 - `runs/<run_id>/secrets/mqtt_device_password.txt`
 - `runs/<run_id>/secrets/mqtt_controller_password.txt`
 - `runs/<run_id>/secrets/coap_psk.txt`
+- `runs/<run_id>/state/run_meta.json`
 
-Nesenzitivne identity ostavaju pevne:
+`run_meta.json` obsahuje minimálnu provenienciu behu:
+
+- `run_id`
+- `git_commit`
+- `created_at`
+
+Nesenzitívne identity ostávajú pevné:
 
 - `device01`
 - `controller01`
@@ -89,7 +120,7 @@ make ota-baseline
 make ota-secure
 ```
 
-Fallback bez `make` pre jeden scenár:
+Alternatíva bez `make` pre jeden scenár:
 
 ```bash
 bash scripts/run_case.sh mqtt-baseline
@@ -102,16 +133,27 @@ bash scripts/run_case.sh ota-baseline
 bash scripts/run_case.sh ota-secure
 ```
 
-Každý scenár vykoná rovnaký high-level workflow:
+Všetky scenáre používajú rovnaký základný priebeh:
 
 1. vytvorenie nového `run_id`
-2. vygenerovanie per-run secret suborov
-3. zápis `scenario.txt`
-4. `docker compose up -d`
+2. vygenerovanie per-run secret súborov
+3. zápis `scenario.txt` a `compose_files.txt`
+4. `docker compose up -d --wait`
 5. `wait_ready.sh`
 6. útokové a kontrolné skripty
 7. zber artefaktov cez `monitor-collector`
 8. `docker compose down --remove-orphans`
+
+Výnimkou je `ota-secure`, ktorý pred behom ešte zabezpečí prítomnosť `minisign` kľúčov a podpis manifestu.
+
+`summary.json` je schémovo pevný a samopopisný artefakt. Validuje sa proti [`schemas/summary.schema.json`](schemas/summary.schema.json) a okrem KPI obsahuje aj:
+
+- `meta.schema_version`
+- `meta.run_id`
+- `meta.profile`
+- `meta.git_commit`
+- `meta.created_at`
+- `meta.compose_files`
 
 ### 4. Replikácie
 
@@ -122,7 +164,7 @@ make replicate-ota N=3
 make replicate-all N=3
 ```
 
-Fallback bez `make`:
+Alternatíva bez `make`:
 
 ```bash
 bash scripts/_run_all.sh 3
@@ -134,7 +176,7 @@ bash scripts/_run_all.sh 3
 make analyze
 ```
 
-Fallback bez `make`:
+Alternatíva bez `make`:
 
 ```bash
 bash scripts/analyze_runs.sh
@@ -143,7 +185,54 @@ bash scripts/analyze_runs.sh
 Výstupy:
 
 - [`runs/analysis.md`](runs/analysis.md)
+- [`runs/analysis-aggregate.md`](runs/analysis-aggregate.md)
+- [`runs/analysis-aggregate.json`](runs/analysis-aggregate.json)
+- [`runs/aggregate.json`](runs/aggregate.json) - kompatibilitný alias pre strojovo čitateľnú agregáciu
 - [`runs/figures/`](runs/figures/)
+
+## Artefakty behov
+
+Každý beh vytvára samostatný priečinok `runs/<run_id>/` s jednotnou štruktúrou:
+
+- `secrets/`
+- `logs/`
+- `pcap/`
+- `results/summary.json`
+- `results/report.md`
+- `results/fig_kpi.png`
+- `state/scenario.txt`
+- `state/compose_files.txt`
+- `state/run_meta.json`
+- `state/version.json` alebo `state/version.txt`, ak DUT exportuje stav verzie
+
+Táto štruktúra je zámerná. Umožňuje spätne prepojiť interpretáciu výsledkov s konkrétnymi logmi, sieťovými stopami, provenienciou runu a identitou použitej Compose konfigurácie. Na presnú rekonštrukciu scenára je potrebné prepnutie repozitára na zaznamenaný `git_commit`; pri secure behoch treba navyše zohľadniť per-run secrets a v prípade `ota-secure` aj lokálne dostupný `minisign`.
+
+## Dôležité secure detaily
+
+### MQTT secure
+
+- Mosquitto počúva na porte `8883`.
+- Plaintext port `1883` je v secure profile nedostupný.
+- `device01` je konto DUT.
+- `controller01` je samostatné legitimné kontrolné konto na overenie, že mitigácia nezrušila funkčnú komunikáciu.
+
+### CoAP secure
+
+- Port `5684` používa DTLS/PSK.
+- Secure build vytvára iba DTLS endpoint na porte `5684`.
+- Plaintext endpoint na porte `5683` sa v secure profile nevytvára a ostáva zatvorený.
+- Legitimitu secure profilu dokazujú tri samostatné artefakty:
+  - `coap_plain_probe.log`
+  - `coap_dtls_wrong_psk.log`
+  - `coap_dtls_ok.log`
+
+### OTA secure
+
+- `ota_secure_control_signed.sh` overuje, že podpísaná oficiálna aktualizácia sa dá aplikovať.
+- `ota_attack_evil.sh` overuje, že nedôveryhodná aktualizácia sa po aktivácii ochrany neaplikuje.
+- Nginx access logy sa ukladajú do:
+  - `logs/ota_access.log`
+  - `logs/ota_evil_access.log`
 
 ## Referenčný dataset pre text práce
 
@@ -155,6 +244,10 @@ Pre finálny text bakalárskej práce je použitá explicitne určená množina 
 - `20260322-161510`
 - `20260322-161634`
 - `20260322-161643`
+
+Repo ich fixuje aj v machine-readable manifeste
+[`runs/final-dataset.json`](runs/final-dataset.json), aby bol výber datasetu auditovateľný aj
+bez dohľadávania v texte README.
 
 Autoritatívnu analýzu nad týmto datasetom vytvoríš takto:
 
@@ -170,7 +263,11 @@ bash scripts/analyze_runs.sh 20260322-161426,20260322-161440,20260322-161453,202
 
 Výstupy:
 
+- [`runs/final-dataset.json`](runs/final-dataset.json)
 - [`runs/analysis-final.md`](runs/analysis-final.md)
+- [`runs/analysis-aggregate.md`](runs/analysis-aggregate.md)
+- [`runs/analysis-aggregate.json`](runs/analysis-aggregate.json)
+- [`runs/aggregate.json`](runs/aggregate.json)
 - [`runs/figures-final/`](runs/figures-final/)
 
 Vybrané summary súbory referenčných behov:
@@ -182,55 +279,16 @@ Vybrané summary súbory referenčných behov:
 - [`runs/20260322-161634/results/summary.json`](runs/20260322-161634/results/summary.json)
 - [`runs/20260322-161643/results/summary.json`](runs/20260322-161643/results/summary.json)
 
-## Artefakty behov
-
-Každý beh vytvára samostatný priečinok `runs/<run_id>/` s jednotnou štruktúrou:
-
-- `logs/`
-- `pcap/`
-- `results/summary.json`
-- `results/report.md`
-- `state/scenario.txt`
-- `state/version.json`
-
-Táto štruktúra je zámerná. Umožňuje spätne prepojiť interpretáciu výsledkov s konkrétnymi logmi, sieťovými stopami a stavovými údajmi.
-
-## Dôležité secure detaily
-
-### MQTT secure
-
-- Mosquitto počúva na porte `8883`.
-- Plaintext port `1883` je v secure profile nedostupný.
-- `device01` je konto DUT.
-- `controller01` je samostatné legitimné kontrolné konto na overenie, že mitigácia nezrušila funkčnú komunikáciu.
-
-### CoAP secure
-
-- Port `5684` používa DTLS/PSK.
-- Port `5683` je v secure profile blokovaný cez `iptables`.
-- Legitimitu secure profilu dokazujú tri samostatné artefakty:
-  - `coap_plain_probe.log`
-  - `coap_dtls_wrong_psk.log`
-  - `coap_dtls_ok.log`
-
-### OTA secure
-
-- `ota_secure_control_signed.sh` overuje, že podpísaná oficiálna aktualizácia sa dá aplikovať.
-- `ota_attack_evil.sh` overuje, že nedôveryhodná aktualizácia sa po aktivácii ochrany neaplikuje.
-- Nginx access logy sa ukladajú do:
-  - `logs/ota_access.log`
-  - `logs/ota_evil_access.log`
-
 ## Štruktúra repozitára
+
+Skrátená technická mapa hlavných vstupných bodov:
 
 ```text
 iot-security-testbed/
-|-- docker-compose.yml
-|-- docker-compose.mqtt-secure.yml
-|-- docker-compose.coap-secure.yml
-|-- docker-compose.ota-secure.yml
-|-- Makefile
-|-- README.md
+|-- .github/
+|   `-- workflows/
+|       |-- ci.yml
+|       `-- codeql.yml
 |-- configs/
 |   |-- mqtt/
 |   `-- ota/
@@ -240,41 +298,100 @@ iot-security-testbed/
 |   |-- dut/
 |   |-- monitor-collector/
 |   `-- sniffer/
+|-- schemas/
+|   `-- summary.schema.json
 |-- scripts/
 |   |-- new_run.sh
 |   |-- run_case.sh
 |   |-- wait_ready.sh
+|   |-- smoke_test.sh
 |   |-- analyze_runs.sh
 |   |-- mqtt_*.sh
 |   |-- coap_*.sh
 |   `-- ota_*.sh
-`-- runs/
+|-- tests/
+|   |-- fixtures/
+|   |-- test_collector.py
+|   |-- test_compose_hardening.py
+|   |-- test_analyze_results_aggregate.py
+|   |-- test_dut_ota.py
+|   |-- test_run_secrets.py
+|   `-- test_workflows.py
+|-- runs/
+|-- docker-compose.yml
+|-- docker-compose.mqtt-secure.yml
+|-- docker-compose.coap-secure.yml
+|-- docker-compose.ota-secure.yml
+|-- docker-compose.secure.yml
+|-- Makefile
+|-- LICENSE
+|-- pyproject.toml
+|-- README.md
+|-- SECURITY.md
+`-- THESIS_NOTES.md
 ```
+
+`docker-compose.secure.yml` je zámerne ponechaný len ako deprecated compatibility placeholder. Autoritatívne secure scenáre sú rozdelené do súborov `docker-compose.mqtt-secure.yml`, `docker-compose.coap-secure.yml` a `docker-compose.ota-secure.yml`.
 
 ## Testovanie a CI
 
-Pre lokalnu regresnu kontrolu su pripravene tri uzke entrypointy:
+Lokálna aj CI verifikácia je zámerne rozdelená do troch vrstiev:
 
-- `make lint` - spusti `ruff` len nad collectorom a testami
-- `make test` - spusti `pytest` nad golden fixtures pre `mqtt-secure`, `coap-secure` a `ota-secure`
-- `make smoke-ci` - zalozi novy baseline run, zdvihne testbed a pusti existujuci `scripts/smoke_test.sh`
+1. `make lint`
+   overuje statickú kvalitu Python častí (`collector`, agregovaná analýza, testy) pomocou `ruff`.
+2. `make test`
+   spúšťa `pytest` nad fixture kontraktmi collectora, validáciou schémy `summary.json`, compose hardening testami, agregovanou analýzou, OTA validáciou, per-run secrets a workflow pinningom.
+3. `make smoke-ci`
+   vykoná end-to-end baseline smoke run:
+   - vytvorí nový `run_id`,
+   - zdvihne Compose stack,
+   - vykoná live smoke check nad MQTT a CoAP,
+   - spustí `monitor-collector`,
+   - zopakuje smoke check nad `state/run_meta.json` a `results/summary.json`,
+   - overí, že `summary.json.meta.run_id == RUN_ID`.
 
-GitHub Actions workflow `.github/workflows/ci.yml` spusta presne tieto tri vrstvy:
+GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) spúšťa rovnaké tri vrstvy. Pri smoke rune uploaduje:
 
-- lint
-- unit testy collectora
-- jeden smoke test nad existujucim shell skriptom
+- `.env`
+- `logs/**`
+- `pcap/**`
+- `results/**`
+- `state/**`
+
+CI teda nezlyhá len pri padnutej službe, ale aj vtedy, keď sa collector nespustí, keď chýba proveniencia v `state/` alebo keď nevznikne `summary.json` s očakávaným `meta.run_id`.
+
+Popri hlavnom CI je v repozitári aj workflow [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml), ktorý cez GitHub CodeQL vykonáva statickú bezpečnostnú analýzu pre `python` a GitHub Actions workflowy.
+
+## Bezpečnosť a nahlasovanie zraniteľností
+
+Pravidlá pre zodpovedné nahlasovanie sú uvedené v [SECURITY.md](SECURITY.md). Repozitár je verejný a tematicky bezpečnostný, preto sa odporúča nepoužívať verejné issue na zverejnenie exploit detailov pred triage.
+
+## Citácia a väzba na prácu
+
+Ak repozitár používaš ako technický zdroj pre bakalársku prácu, článok alebo interný report, pri citácii uveď aspoň:
+
+- názov repozitára
+- autora alebo organizáciu
+- URL repozitára
+- dátum prístupu
+- presný `git_commit`
+
+Ak cituješ konkrétny experimentálny výsledok, doplň aj príslušný `run_id`, aby bolo možné spätne dohľadať artefakty a agregovanú interpretáciu.
+
+Pre GitHub, citačné manažéry a strojové spracovanie je pripravený aj súbor
+[`CITATION.cff`](CITATION.cff).
 
 ## Troubleshooting
 
 | Problém | Riešenie |
 |---|---|
 | `mqtt-secure` zlyhá na `passwd` | spusti `bash scripts/new_run.sh`, over existenciu `runs/<run_id>/secrets/*.txt` a scenár spusť znova |
+| `minisign not found` pri `ota-secure` | nainštaluj `minisign` alebo nastav `MINISIGN_BIN` na explicitnú cestu k binárke |
 | chceš spustiť len jeden scenár bez `make` | použi `bash scripts/run_case.sh <scenár>` |
 | `make` nie je nainštalované | použi fallback príkazy uvedené vyššie |
-| `ota-secure` nemá public key | over, že existuje `configs/ota/minisign.pub`; public key sa číta priamo z tohto read-only config súboru |
+| lokálne `make test` zlyhá na chýbajúcom Pythone | doinštaluj Python `3.12` a balíky `pytest`, `ruff`, `jsonschema`, `pyyaml` |
 | CoAP secure visí príliš dlho | používaj aktuálne skripty s `timeout`, nie staré helpery |
-| staršie poznámky ukazujú iný workflow | referenčný workflow je tento README + `Makefile` + `wait_ready.sh` |
+| staršie poznámky ukazujú iný workflow | referenčný postup je tento README spolu s `Makefile`, `scripts/run_case.sh`, `scripts/_run_all.sh` a `scripts/wait_ready.sh` |
 
 ## Reprodukovateľnosť a limity
 
@@ -282,7 +399,12 @@ Reprodukovateľnosť je podporená:
 
 - fixnou Compose topológiou,
 - skriptovaným spúšťaním scenárov,
-- samostatným ukladaním logov, PCAP a KPI pre každý beh,
-- oddelením `baseline` a `secure` profilov.
+- samostatným ukladaním logov, PCAP, KPI a proveniencie pre každý beh,
+- oddelením `baseline` a `secure` profilov,
+- schémovo fixovaným exportom `summary.json`.
 
 Tento projekt je laboratórny testbed. Výsledky sú platné v rámci definovaného Docker prostredia a explicitne zvoleného datasetu. Nejde o produkčný benchmark ani o dôkaz všeobecnej bezpečnosti IoT zariadení.
+
+## Licencia
+
+Repozitár je distribuovaný pod licenciou uvedenou v súbore [LICENSE](LICENSE).

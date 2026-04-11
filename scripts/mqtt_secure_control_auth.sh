@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MQTT Secure - kontrolny beh s opravnenym klientom.
+# MQTT secure scenár: kontrolný beh s oprávneným klientom.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")/.."

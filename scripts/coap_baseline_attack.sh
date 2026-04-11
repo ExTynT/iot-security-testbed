@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CoAP baseline: plaintext GET without DTLS should succeed.
+# CoAP baseline scenár: nešifrovaný GET bez DTLS má byť úspešný.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

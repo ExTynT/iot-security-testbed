@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/iot-security-testbed/schemas/summary.schema.json",
+  "title": "IoT Security Testbed Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "scenario",
+    "kpi",
+    "warnings",
+    "evidence",
+    "artifacts",
+    "raw"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "run_id",
+        "profile",
+        "git_commit",
+        "created_at",
+        "compose_files"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile": {
+          "type": "string",
+          "enum": ["baseline", "secure"]
+        },
+        "git_commit": {
+          "type": "string",
+          "pattern": "^(unknown|[0-9a-f]{40})$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "compose_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "scenario": {
+      "type": "string",
+      "enum": [
+        "mqtt-baseline",
+        "mqtt-secure",
+        "coap-baseline",
+        "coap-secure",
+        "ota-baseline",
+        "ota-secure"
+      ]
+    },
+    "kpi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "P1_mqtt_unauth_denied",
+        "P1_mqtt_unauth_success",
+        "P2_coap_plain_gets",
+        "P2_coap_plain_blocked",
+        "P2_coap_dtls_failures",
+        "P2_coap_dtls_ok",
+        "P3_ota_evil_applied",
+        "P3_ota_evil_blocked",
+        "P3_ota_signed_ok"
+      ],
+      "properties": {
+        "P1_mqtt_unauth_denied": { "type": "integer", "minimum": 0 },
+        "P1_mqtt_unauth_success": { "type": "integer", "minimum": 0 },
+        "P2_coap_plain_gets": { "type": "integer", "minimum": 0 },
+        "P2_coap_plain_blocked": { "type": "integer", "minimum": 0 },
+        "P2_coap_dtls_failures": { "type": "integer", "minimum": 0 },
+        "P2_coap_dtls_ok": { "type": "integer", "minimum": 0 },
+        "P3_ota_evil_applied": { "type": "integer", "minimum": 0 },
+        "P3_ota_evil_blocked": { "type": "integer", "minimum": 0 },
+        "P3_ota_signed_ok": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "P1_mqtt_unauth_success",
+        "P1_mqtt_unauth_denied",
+        "P2_coap_plain_gets",
+        "P2_coap_plain_blocked",
+        "P2_coap_dtls_failures",
+        "P2_coap_dtls_ok",
+        "P3_ota_evil_applied",
+        "P3_ota_evil_blocked",
+        "P3_ota_signed_ok"
+      ],
+      "properties": {
+        "P1_mqtt_unauth_success": { "type": "string" },
+        "P1_mqtt_unauth_denied": { "type": "string" },
+        "P2_coap_plain_gets": { "type": "string" },
+        "P2_coap_plain_blocked": { "type": "string" },
+        "P2_coap_dtls_failures": { "type": "string" },
+        "P2_coap_dtls_ok": { "type": "string" },
+        "P3_ota_evil_applied": { "type": "string" },
+        "P3_ota_evil_blocked": { "type": "string" },
+        "P3_ota_signed_ok": { "type": "string" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pcap_bytes", "logs_present"],
+      "properties": {
+        "pcap_bytes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mqtt", "coap", "ota", "ota_evil"],
+          "properties": {
+            "mqtt": { "type": "integer", "minimum": 0 },
+            "coap": { "type": "integer", "minimum": 0 },
+            "ota": { "type": "integer", "minimum": 0 },
+            "ota_evil": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "logs_present": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mqtt_log",
+            "coap_log",
+            "dut_log",
+            "ota_access_log",
+            "ota_evil_access_log"
+          ],
+          "properties": {
+            "mqtt_log": { "type": "boolean" },
+            "coap_log": { "type": "boolean" },
+            "dut_log": { "type": "boolean" },
+            "ota_access_log": { "type": "boolean" },
+            "ota_evil_access_log": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mqtt", "coap", "ota", "dut"],
+      "properties": {
+        "mqtt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unauth_success", "denied", "published", "auth_write_ok", "auth_read_ok"],
+          "properties": {
+            "unauth_success": { "type": "integer", "minimum": 0 },
+            "denied": { "type": "integer", "minimum": 0 },
+            "published": { "type": "integer", "minimum": 0 },
+            "auth_write_ok": { "type": "integer", "minimum": 0 },
+            "auth_read_ok": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "coap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plain_gets_received",
+            "plain_blocked",
+            "plain_accessible",
+            "baseline_accessible",
+            "plain_gets_server_log",
+            "dtls_failures",
+            "dtls_ok"
+          ],
+          "properties": {
+            "plain_gets_received": { "type": "integer", "minimum": 0 },
+            "plain_blocked": { "type": "integer", "minimum": 0 },
+            "plain_accessible": { "type": "integer", "minimum": 0 },
+            "baseline_accessible": { "type": "integer", "minimum": 0 },
+            "plain_gets_server_log": { "type": "integer", "minimum": 0 },
+            "dtls_failures": { "type": "integer", "minimum": 0 },
+            "dtls_ok": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "ota": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "http_requests",
+            "evil_http_requests",
+            "evil_http_delta",
+            "attack_before_version",
+            "attack_after_version",
+            "control_before_version",
+            "control_after_version",
+            "control_http_delta",
+            "attack_new_dut_excerpt"
+          ],
+          "properties": {
+            "http_requests": { "type": "integer", "minimum": 0 },
+            "evil_http_requests": { "type": "integer", "minimum": 0 },
+            "evil_http_delta": { "type": "integer", "minimum": 0 },
+            "attack_before_version": { "type": "string" },
+            "attack_after_version": { "type": "string" },
+            "control_before_version": { "type": "string" },
+            "control_after_version": { "type": "string" },
+            "control_http_delta": { "type": "integer", "minimum": 0 },
+            "attack_new_dut_excerpt": { "type": "string" }
+          }
+        },
+        "dut": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ota_applied", "ota_blocked", "ota_signed_ok", "state_version"],
+          "properties": {
+            "ota_applied": { "type": "integer", "minimum": 0 },
+            "ota_blocked": { "type": "integer", "minimum": 0 },
+            "ota_signed_ok": { "type": "integer", "minimum": 0 },
+            "state_version": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

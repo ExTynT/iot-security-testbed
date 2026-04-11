@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# MQTT Secure útok – 30 pokusov neautorizovaného publish bez hesla na TLS port
-# Metodika kap. 3.11: KPI = počet odmietnutých neautorizovaných operácií
-# Očakávaný výsledok: NEUSPECH (TLS + ACL + auth)
-# Spustiť po: docker compose -f docker-compose.yml -f docker-compose.mqtt-secure.yml up -d
-# Optimalizácia: celý loop v jedinom docker exec (10-20× rýchlejšie)
+# MQTT secure útok: 30 pokusov o neautorizovaný publish bez hesla na TLS porte.
+# Metodika kap. 3.11: KPI je počet odmietnutých neautorizovaných operácií.
+# Spúšťať po: docker compose -f docker-compose.yml -f docker-compose.mqtt-secure.yml up -d
+# Celý batch beží v jednom docker exec, aby bol scenár časovo stabilný.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 cd "$(dirname "$0")/.."
@@ -17,7 +16,7 @@ echo ""
 echo "[1] Attacker skusa ${TOTAL}x publish na TLS port 8883 bez hesla..."
 echo "    Ocakava sa: vsetky odmietnuté (Connection error / not authorised)"
 
-# Batch: celý loop prebehne v jedinom docker exec (eliminuje ~0.5s per-exec overhead)
+# Batch prebehne v jedinom docker exec.
 set +e
 RESULT=$(docker compose exec -T attacker sh -c '
   denied=0

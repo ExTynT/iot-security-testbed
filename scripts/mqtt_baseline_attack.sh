@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# MQTT Baseline útok – 30 publish pokusov bez autentifikácie
-# Metodika kap. 3.11: KPI = počet úspešných neautorizovaných PUBLISH operácií
-# Očakávaný výsledok: USPECH (broker allow_anonymous=true, port 1883)
-# Spustiť po: docker compose up -d  (bez mqtt-secure overlayu)
-# Optimalizácia: celý loop v jedinom docker exec (10-20× rýchlejšie)
+# MQTT baseline útok: 30 publish pokusov bez autentifikácie.
+# Metodika kap. 3.11: KPI je počet úspešných neautorizovaných PUBLISH operácií.
+# Spúšťať po: docker compose up -d bez mqtt-secure overlayu.
+# Celý batch beží v jednom docker exec, aby výsledok nebol brzdený per-exec overheadom.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,7 +14,7 @@ echo "=== MQTT BASELINE ATTACK (${TOTAL} pokusov) ==="
 echo ""
 echo "[1] Attacker posiela ${TOTAL}x neautorizovany publish na port 1883..."
 
-# Batch: celý loop prebehne v jedinom docker exec (eliminuje ~0.5s per-exec overhead)
+# Batch prebehne v jedinom docker exec.
 set +e
 RESULT=$(docker compose exec -T attacker sh -c '
   count=0

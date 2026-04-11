@@ -1,3 +1,10 @@
+"""Referenčný DUT klient pre MQTT telemetriu a OTA aktualizácie.
+
+Modul simuluje jednoduché IoT zariadenie, ktoré publikuje verziu firmvéru,
+prijíma OTA príkazy cez MQTT a podľa režimu scenára validuje manifest,
+podpis a rollback ochranu.
+"""
+
 import hashlib
 import json
 import os
@@ -25,13 +32,17 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class OTAValidationError(Exception):
+    """Výnimka pre deterministické odmietnutie OTA aktualizácie."""
+
     def __init__(self, reason, detail=""):
+        """Uloží strojovo čitateľný dôvod zlyhania OTA validácie."""
         super().__init__(detail or reason)
         self.reason = reason
         self.detail = detail
 
 
 def read_secret_value(value="", file_path=""):
+    """Načíta tajomstvo priamo z hodnoty alebo zo súboru."""
     secret_value = str(value).strip()
     if secret_value:
         return secret_value
@@ -47,6 +58,7 @@ def read_secret_value(value="", file_path=""):
 
 
 def load_minisign_pubkey(pubkey="", pubkey_path=""):
+    """Načíta pinned minisign verejný kľúč zo stringu alebo zo súboru."""
     pubkey_value = str(pubkey).strip()
     if pubkey_value:
         return pubkey_value
@@ -72,12 +84,14 @@ MINISIGN_PUBKEY = load_minisign_pubkey(os.getenv("MINISIGN_PUBKEY", "").strip(),
 
 
 def ensure_parent_dir(path):
+    """Vytvorí nadradený adresár pre cieľový súbor, ak ešte neexistuje."""
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
 
 
 def default_version_state():
+    """Vráti počiatočný stav verzie DUT."""
     return {
         "version": DEFAULT_VERSION,
         "version_code": DEFAULT_VERSION_CODE,
@@ -86,6 +100,13 @@ def default_version_state():
 
 
 def normalize_version_code(value):
+    """Normalizuje `version_code` na nezáporné celé číslo.
+
+    Raises
+    ------
+    OTAValidationError
+        Ak hodnota nie je celé číslo alebo je záporná.
+    """
     try:
         version_code = int(value)
     except (TypeError, ValueError) as exc:
@@ -96,6 +117,7 @@ def normalize_version_code(value):
 
 
 def read_version_state(path=VERSION_JSON_FILE):
+    """Načíta stav verzie zo súboru JSON alebo zo starého textového fallbacku."""
     if os.path.exists(path):
         try:
             with open(path, encoding="utf-8") as handle:
@@ -127,6 +149,7 @@ def read_version_state(path=VERSION_JSON_FILE):
 
 
 def write_version_state(version, version_code, path=VERSION_JSON_FILE, applied_at=None):
+    """Zapíše stav verzie DUT v novom JSON formáte."""
     ensure_parent_dir(path)
     state = {
         "version": version,
@@ -139,18 +162,22 @@ def write_version_state(version, version_code, path=VERSION_JSON_FILE, applied_a
 
 
 def read_version():
+    """Vráti aktuálnu verziu firmvéru."""
     return read_version_state()["version"]
 
 
 def read_version_code():
+    """Vráti aktuálny monotónny `version_code`."""
     return read_version_state()["version_code"]
 
 
 def is_secure_mode(pubkey=MINISIGN_PUBKEY):
+    """Rozhodne, či DUT beží v OTA secure profile."""
     return bool(pubkey.strip())
 
 
 def reject_update(reason, detail=""):
+    """Vypíše jednotný log pre odmietnutú OTA aktualizáciu."""
     if detail:
         print(f"OTA: {reason} - {detail}")
     else:
@@ -158,6 +185,13 @@ def reject_update(reason, detail=""):
 
 
 def verify_manifest(path_manifest, pubkey=MINISIGN_PUBKEY):
+    """Overí podpis OTA manifestu cez minisign.
+
+    Raises
+    ------
+    OTAValidationError
+        Ak podpis manifestu neprejde validáciou.
+    """
     if not pubkey:
         print("OTA: MINISIGN_PUBKEY nie je nastaveny - overenie PRESKOCENE (baseline)")
         return True
@@ -174,6 +208,13 @@ def verify_manifest(path_manifest, pubkey=MINISIGN_PUBKEY):
 
 
 def load_manifest(path_manifest):
+    """Načíta OTA manifest z JSON súboru.
+
+    Raises
+    ------
+    OTAValidationError
+        Ak manifest nemožno načítať alebo parsovať.
+    """
     try:
         with open(path_manifest, encoding="utf-8") as handle:
             return json.load(handle)
@@ -182,6 +223,18 @@ def load_manifest(path_manifest):
 
 
 def validate_manifest(manifest):
+    """Validuje povinné polia OTA manifestu.
+
+    Returns
+    -------
+    dict
+        Normalizovaný manifest s očistenými hodnotami.
+
+    Raises
+    ------
+    OTAValidationError
+        Ak manifest nespĺňa očakávanú štruktúru alebo obsah.
+    """
     if not isinstance(manifest, dict):
         raise OTAValidationError("MANIFEST_INVALID", "manifest root must be an object")
 
@@ -210,6 +263,7 @@ def validate_manifest(manifest):
 
 
 def compute_sha256(path_file):
+    """Vypočíta SHA-256 hash súboru."""
     digest = hashlib.sha256()
     with open(path_file, "rb") as handle:
         for chunk in iter(lambda: handle.read(8192), b""):
@@ -218,6 +272,15 @@ def compute_sha256(path_file):
 
 
 def evaluate_downloaded_update(manifest, firmware_path, current_state, secure_mode, signature_valid=True):
+    """Vyhodnotí, či stiahnutá OTA aktualizácia smie byť aplikovaná.
+
+    V secure režime kontroluje podpis, hash a rollback ochranu.
+
+    Raises
+    ------
+    OTAValidationError
+        Ak aktualizácia porušuje niektorú validačnú podmienku.
+    """
     if secure_mode and not signature_valid:
         raise OTAValidationError("SIGNATURE_INVALID", "manifest signature rejected")
 
@@ -245,6 +308,7 @@ def evaluate_downloaded_update(manifest, firmware_path, current_state, secure_mo
 
 
 def download_file(url, destination, timeout):
+    """Stiahne vzdialený súbor po častiach na lokálnu cestu."""
     import requests
 
     with requests.get(url, timeout=timeout, stream=True) as response:
@@ -256,6 +320,13 @@ def download_file(url, destination, timeout):
 
 
 def ota_check_and_apply(base):
+    """Skontroluje server OTA repozitára a prípadne aplikuje nový firmvér.
+
+    Returns
+    -------
+    bool
+        `True`, ak DUT úspešne prešiel na novú verziu, inak `False`.
+    """
     secure_mode = is_secure_mode()
     manifest_url = f"{base}/manifest.json"
     signature_url = f"{base}/manifest.json.minisig"
@@ -326,11 +397,13 @@ def ota_check_and_apply(base):
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
+    """MQTT callback po úspešnom pripojení klienta."""
     print("MQTT connected rc=", rc)
     client.subscribe("cmd/ota")
 
 
 def on_message(client, userdata, msg):
+    """Spracuje MQTT správu a spustí OTA workflow pre tému `cmd/ota`."""
     global OTA_BASE
     if msg.topic == "cmd/ota":
         payload = msg.payload.decode("utf-8", errors="ignore").strip()
@@ -341,6 +414,7 @@ def on_message(client, userdata, msg):
 
 
 def ensure_state_initialized():
+    """Inicializuje stavový súbor verzie, ak ešte neexistuje."""
     ensure_parent_dir(VERSION_JSON_FILE)
     if not os.path.exists(VERSION_JSON_FILE):
         current = read_version_state()
@@ -352,6 +426,7 @@ def ensure_state_initialized():
 
 
 def main():
+    """Spustí MQTT klienta DUT a periodické publikovanie telemetrie."""
     import paho.mqtt.client as mqtt
 
     ensure_state_initialized()

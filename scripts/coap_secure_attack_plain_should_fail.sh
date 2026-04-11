@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# CoAP secure plaintext probe on port 5683.
-# Expected result: secure build exposes only the DTLS endpoint on 5684.
+# CoAP secure scenár: test nešifrovaného prístupu na porte 5683.
+# Očakávanie: secure build exponuje iba DTLS endpoint na porte 5684.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -1,10 +1,10 @@
 #
-# Deprecated compatibility placeholder.
-# Current authoritative secure flows are split into:
+# Zastaraný kompatibilitný placeholder.
+# Aktuálne autoritatívne secure scenáre sú rozdelené do:
 #   - docker-compose.mqtt-secure.yml
 #   - docker-compose.coap-secure.yml
 #   - docker-compose.ota-secure.yml
-# This file intentionally contains no active overrides so it cannot drift away
-# from the thesis workflow while still preserving the historical filename.
+# Tento súbor zámerne neobsahuje aktívne overrides, aby sa nerozišiel
+# s thesis workflow a zároveň zostal zachovaný historický názov.
 #
 services: {}

@@ -30,6 +30,7 @@ fi
 echo ""
 echo "3. Checking artifacts..."
 RUN_ID=${RUN_ID:-$(grep RUN_ID .env 2>/dev/null | cut -d= -f2 || echo "unknown")}
+EXPECT_RESULTS=${SMOKE_EXPECT_RESULTS:-0}
 pcap_count=0
 log_count=0
 
@@ -53,6 +54,31 @@ if [ "$log_count" -gt 0 ]; then
 else
     echo "No log files yet"
     mark_fail
+fi
+
+if [ -f "runs/$RUN_ID/state/run_meta.json" ]; then
+    echo "run_meta.json found"
+else
+    echo "run_meta.json missing"
+    mark_fail
+fi
+
+if [ "${SMOKE_EXPECT_RESULTS:-0}" = "1" ]; then
+    if [ -f "runs/$RUN_ID/results/summary.json" ]; then
+        echo "summary.json found"
+        SUMMARY_RUN_ID=$(python -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("meta", {}).get("run_id", ""))' "runs/$RUN_ID/results/summary.json")
+        if [ "$SUMMARY_RUN_ID" = "$RUN_ID" ]; then
+            echo "summary.json meta.run_id OK"
+        else
+            echo "summary.json meta.run_id mismatch: expected $RUN_ID got ${SUMMARY_RUN_ID:-<empty>}"
+            mark_fail
+        fi
+    else
+        echo "summary.json missing"
+        mark_fail
+    fi
+else
+    echo "summary.json check skipped before collector"
 fi
 
 echo ""

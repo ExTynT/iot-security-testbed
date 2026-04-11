@@ -29,9 +29,9 @@ run_root = Path("runs") / ${RUN_ID@Q}
 for name in ("pcap", "logs", "results", "state", "secrets"):
     (run_root / name).mkdir(parents=True, exist_ok=True)
 
-# Shared artifact directories are bind-mounted into containers running under
-# different non-root UIDs on Linux CI. Sticky world-writable perms keep the
-# directories writable without making files mutually clobberable.
+# Zdieľané adresáre s artefaktmi sa bind-mountujú do kontajnerov bežiacich pod
+# rôznymi neprivilegovanými UID na Linux CI. Sticky world-writable práva
+# zachovajú zapisovateľnosť bez toho, aby si kontajnery navzájom prepisovali súbory.
 if os.name == "posix":
     for name in ("pcap", "logs", "results", "state"):
         try:

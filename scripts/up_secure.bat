@@ -1,6 +1,6 @@
 @echo off
-REM Generic secure start of all overlays.
-REM For reproducible thesis runs prefer Git Bash + Makefile or scripts\_run_all.sh.
+REM Vseobecne spustenie vsetkych secure overlayov.
+REM Pre reprodukovatelne thesis behy preferuj Git Bash + Makefile alebo scripts\_run_all.sh.
 cd %~dp0\..
 
 if exist configs\ota\minisign.pub (

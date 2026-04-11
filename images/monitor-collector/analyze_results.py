@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """
-Agregacna analyza vsetkych runs/ -> Markdown sprava + PNG grafy pre bakalarsku pracu.
+Agregačná analýza výsledkov uložených v `runs/`.
 
-Spustenie (cez make):
+Modul načíta všetky `summary.json` súbory z jednotlivých behov, odvodené KPI
+premení na agregované PASS/FAIL metriky a vygeneruje strojovo čitateľný JSON,
+Markdown report aj súpravu grafov pre bakalársku prácu.
+
+Spustenie cez `make`
+-------------------
     make analyze
 
-Manualne:
+Manuálne spustenie
+------------------
     docker compose run --rm -v "$PWD/runs:/runs" --entrypoint python \
       monitor-collector /app/analyze_results.py
 """
@@ -38,6 +44,13 @@ SCENARIO_LABELS = {
 }
 
 KPI_META = {
+    "P1_mqtt_unauth_success": {
+        "label": "MQTT unauth success",
+        "baseline_expect": "> 0 (utok uspel)",
+        "secure_expect": "= 0 (zablokovany)",
+        "baseline_ok": lambda v: v > 0,
+        "secure_ok": lambda v: v == 0,
+    },
     "P1_mqtt_unauth_denied": {
         "label": "MQTT unauth denied",
         "baseline_expect": "= 0 (utok uspel)",
@@ -48,14 +61,14 @@ KPI_META = {
     "P2_coap_plain_gets": {
         "label": "CoAP plain GETs",
         "baseline_expect": "> 0 (plaintext citanie)",
-        "secure_expect": "= 0 (port blokovany)",
+        "secure_expect": "= 0 (plaintext endpoint disabled)",
         "baseline_ok": lambda v: v > 0,
         "secure_ok": lambda v: v == 0,
     },
     "P2_coap_plain_blocked": {
-        "label": "CoAP plain port blocked",
+        "label": "CoAP plaintext endpoint disabled",
         "baseline_expect": "N/A",
-        "secure_expect": "> 0 (iptables OK)",
+        "secure_expect": "> 0 (plaintext endpoint disabled)",
         "baseline_ok": lambda v: True,
         "secure_ok": lambda v: v >= 1,
     },
@@ -113,8 +126,13 @@ COMPONENT_VERSIONS = [
     ("OpenSSL (DTLS klient)", "3.x (Alpine 3.20)"),
 ]
 
+AGGREGATE_JSON_PATH = RUNS_DIR / "analysis-aggregate.json"
+LEGACY_AGGREGATE_JSON_PATH = RUNS_DIR / "aggregate.json"
+AGGREGATE_MARKDOWN_PATH = RUNS_DIR / "analysis-aggregate.md"
+
 
 def parse_run_ids(value: str | None) -> list[str]:
+    """Rozparsuje premennú s výberom `run_id` na zoznam identifikátorov."""
     if not value:
         return []
     normalized = value.replace("\n", ",").replace(";", ",").replace(" ", ",")
@@ -122,6 +140,7 @@ def parse_run_ids(value: str | None) -> list[str]:
 
 
 def load_runs(selected_run_ids: set[str] | None = None) -> list[dict]:
+    """Načíta všetky kompatibilné `summary.json` z adresára `runs/`."""
     runs = []
     for summary_path in sorted(RUNS_DIR.glob("*/results/summary.json")):
         run_id = summary_path.parts[-3]
@@ -147,10 +166,12 @@ def load_runs(selected_run_ids: set[str] | None = None) -> list[dict]:
 
 
 def avg(values: list[float]) -> float | None:
+    """Vráti aritmetický priemer alebo `None` pre prázdny vstup."""
     return sum(values) / len(values) if values else None
 
 
 def fmt(value: float | None) -> str:
+    """Naformátuje číselnú hodnotu pre tabuľky v reporte."""
     if value is None:
         return "-"
     if float(value).is_integer():
@@ -159,21 +180,30 @@ def fmt(value: float | None) -> str:
 
 
 def check(value: float | None, fn) -> str:
+    """Prevedie výsledok validačnej funkcie na `OK` alebo `FAIL`."""
     if value is None:
         return "-"
     return "OK" if fn(value) else "FAIL"
 
 
 def get_avg(by_scenario: dict[str, list[dict]], kpi_key: str, scenario: str) -> float | None:
+    """Vypočíta priemernú hodnotu KPI pre zvolený scenár."""
     values = [run["kpi"].get(kpi_key, 0) for run in by_scenario.get(scenario, [])]
     return avg(values)
 
 
-def warning_count(by_scenario: dict[str, list[dict]], scenario: str) -> int:
+def warning_run_count(by_scenario: dict[str, list[dict]], scenario: str) -> int:
+    """Spočíta behy scenára, ktoré obsahujú aspoň jeden warning."""
     return sum(1 for run in by_scenario.get(scenario, []) if run.get("warnings"))
 
 
+def warning_entry_count(runs: list[dict]) -> int:
+    """Spočíta všetky warning položky v zozname behov."""
+    return sum(len(run.get("warnings", [])) for run in runs)
+
+
 def scenario_pair_for_kpi(kpi_key: str) -> tuple[str, str]:
+    """Vráti baseline/secure dvojicu scenárov pre daný KPI kľúč."""
     if kpi_key.startswith("P1"):
         return "mqtt-baseline", "mqtt-secure"
     if kpi_key.startswith("P2"):
@@ -181,7 +211,189 @@ def scenario_pair_for_kpi(kpi_key: str) -> tuple[str, str]:
     return "ota-baseline", "ota-secure"
 
 
+def group_runs_by_scenario(runs: list[dict]) -> dict[str, list[dict]]:
+    """Zoskupí načítané behy podľa scenára."""
+    by_scenario: dict[str, list[dict]] = defaultdict(list)
+    for run in runs:
+        by_scenario[run["scenario"]].append(run)
+    return by_scenario
+
+
+def calculate_success_rate(pass_count: int, runs: int) -> float:
+    """Vypočíta podiel úspešných behov v rozsahu 0.0 až 1.0."""
+    if runs == 0:
+        return 0.0
+    return pass_count / runs
+
+
+def scenario_kpi_checks(scenario: str) -> list[tuple[str, str, str, object]]:
+    """Vráti KPI kontroly, ktoré sú relevantné pre konkrétny scenár."""
+    checks = []
+    for kpi_key, meta in KPI_META.items():
+        baseline_scenario, secure_scenario = scenario_pair_for_kpi(kpi_key)
+        if scenario == baseline_scenario:
+            checks.append((kpi_key, meta["label"], meta["baseline_expect"], meta["baseline_ok"]))
+        elif scenario == secure_scenario:
+            checks.append((kpi_key, meta["label"], meta["secure_expect"], meta["secure_ok"]))
+    return checks
+
+
+def evaluate_run_pass(run: dict) -> dict:
+    """Vyhodnotí, či jeden run spĺňa všetky KPI a neobsahuje warningy."""
+    scenario = run.get("scenario", "unknown")
+    kpi = run.get("kpi", {})
+    warnings = list(run.get("warnings", []))
+    checks: list[dict[str, object]] = []
+    failed_checks: list[str] = []
+    applicable_checks = scenario_kpi_checks(scenario)
+
+    if not applicable_checks:
+        checks.append({
+            "name": "unknown_scenario",
+            "description": f"Scenar `{scenario}` nema definovane KPI pravidla.",
+            "passed": False,
+        })
+        failed_checks.append("unknown_scenario")
+    else:
+        for kpi_key, label, expected, predicate in applicable_checks:
+            value = kpi.get(kpi_key, 0)
+            passed = bool(predicate(value))
+            checks.append({
+                "name": kpi_key,
+                "description": f"{label}: ocakavanie {expected}, namerana hodnota {value}.",
+                "passed": passed,
+            })
+            if not passed:
+                failed_checks.append(kpi_key)
+
+    warnings_passed = not warnings
+    checks.append({
+        "name": "warnings_present",
+        "description": "Beh nesmie obsahovat warningy v summary.json.",
+        "passed": warnings_passed,
+    })
+    if not warnings_passed:
+        failed_checks.append("warnings_present")
+
+    return {
+        "run_id": run.get("run_id", "unknown"),
+        "scenario": scenario,
+        "passed": not failed_checks,
+        "failed_checks": failed_checks,
+        "checks": checks,
+    }
+
+
+def build_aggregate_summary(runs: list[dict]) -> dict:
+    """Zostaví agregované štatistiky úspešnosti pre všetky scenáre."""
+    evaluations = [evaluate_run_pass(run) for run in runs]
+    by_scenario: dict[str, list[dict]] = defaultdict(list)
+    for evaluation in evaluations:
+        by_scenario[evaluation["scenario"]].append(evaluation)
+    source_runs_by_scenario = group_runs_by_scenario(runs)
+
+    scenarios: dict[str, dict[str, float | int]] = {}
+    for scenario in SCENARIO_ORDER:
+        scenario_runs = by_scenario.get(scenario, [])
+        run_count = len(scenario_runs)
+        pass_count = sum(1 for evaluation in scenario_runs if evaluation["passed"])
+        fail_count = run_count - pass_count
+        scenarios[scenario] = {
+            "runs": run_count,
+            "pass_count": pass_count,
+            "fail_count": fail_count,
+            "success_rate": calculate_success_rate(pass_count, run_count),
+            "warning_count": warning_entry_count(source_runs_by_scenario.get(scenario, [])),
+        }
+
+    total_runs = len(evaluations)
+    total_pass = sum(1 for evaluation in evaluations if evaluation["passed"])
+    total_fail = total_runs - total_pass
+    return {
+        "totals": {
+            "runs": total_runs,
+            "pass_count": total_pass,
+            "fail_count": total_fail,
+            "success_rate": calculate_success_rate(total_pass, total_runs),
+            "warning_count": warning_entry_count(runs),
+        },
+        "scenarios": scenarios,
+    }
+
+
+def build_success_rate_table_lines(aggregate: dict, *, use_labels: bool) -> list[str]:
+    """Vytvorí riadky Markdown tabuľky s explicitnou úspešnosťou scenárov."""
+    totals = aggregate["totals"]
+    scenarios = aggregate["scenarios"]
+    lines = [
+        "| Scenar | Behy | PASS | FAIL | Warningy | Success rate |",
+        "|--------|------|------|------|----------|--------------|",
+    ]
+    for scenario in SCENARIO_ORDER:
+        stats = scenarios.get(scenario, {
+            "runs": 0,
+            "pass_count": 0,
+            "fail_count": 0,
+            "warning_count": 0,
+            "success_rate": 0.0,
+        })
+        label = SCENARIO_LABELS.get(scenario, scenario) if use_labels else scenario
+        success_rate = stats["success_rate"] * 100
+        lines.append(
+            f"| {label} | {stats['runs']} | {stats['pass_count']} | {stats['fail_count']} | "
+            f"{stats['warning_count']} | {success_rate:.1f}% |"
+        )
+    total_label = "Celkom" if use_labels else "celkom"
+    lines.append(
+        f"| {total_label} | {totals['runs']} | {totals['pass_count']} | {totals['fail_count']} | "
+        f"{totals['warning_count']} | {totals['success_rate'] * 100:.1f}% |"
+    )
+    return lines
+
+
+def build_aggregate_markdown(aggregate: dict) -> str:
+    """Vygeneruje stručný Markdown report pre `analysis-aggregate.*`."""
+    totals = aggregate["totals"]
+    lines = [
+        "# Agregovana uspesnost behov\n",
+        (
+            "Binarne PASS/FAIL vyhodnotenie je odvodene z `KPI_META` check funkcii a z "
+            "poziadavky, aby run neobsahoval warningy v `summary.json`.\n"
+        ),
+        (
+            f"Celkovo: **{totals['pass_count']}/{totals['runs']} PASS** "
+            f"({totals['success_rate'] * 100:.1f}%), warningy spolu: **{totals['warning_count']}**.\n"
+        ),
+    ]
+    lines.extend(build_success_rate_table_lines(aggregate, use_labels=False))
+    lines.extend([
+        "",
+        (
+            "PASS/FAIL vychadza priamo z `KPI_META` check funkcii a zo vstupnych warningov "
+            "z `summary.json`."
+        ),
+    ])
+    return "\n".join(lines)
+
+
+def write_aggregate_outputs(
+    aggregate: dict,
+    json_path: Path,
+    markdown_path: Path,
+    legacy_json_path: Path | None = None,
+) -> None:
+    """Zapíše agregovaný JSON report a jeho Markdown reprezentáciu."""
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(aggregate, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if legacy_json_path is not None:
+        legacy_json_path.parent.mkdir(parents=True, exist_ok=True)
+        legacy_json_path.write_text(json.dumps(aggregate, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    markdown_path.write_text(build_aggregate_markdown(aggregate), encoding="utf-8")
+
+
 def interpretation_sections(by_scenario: dict[str, list[dict]]) -> list[tuple[str, str]]:
+    """Vytvorí interpretačné odseky pre scenáre, ktoré majú dáta."""
     sections = []
     if by_scenario.get("mqtt-baseline") or by_scenario.get("mqtt-secure"):
         sections.append((
@@ -194,9 +406,9 @@ def interpretation_sections(by_scenario: dict[str, list[dict]]) -> list[tuple[st
         ))
     if by_scenario.get("coap-baseline") or by_scenario.get("coap-secure"):
         sections.append((
-            "P2 - CoAP DTLS/PSK a segmentacia",
+            "P2 - CoAP DTLS/PSK a secure-only endpoint",
             "Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. "
-            "Secure scenar blokuje port 5683 pomocou iptables (P2_coap_plain_blocked > 0) "
+            "Secure scenar neexponuje plaintext endpoint na porte 5683 (P2_coap_plain_blocked > 0) "
             "a vyzaduje DTLS/PSK na porte 5684. Pokus so zlym PSK bol odmietnuty "
             "(P2_coap_dtls_failures > 0), spravny PSK bol akceptovany (P2_coap_dtls_ok >= 1)."
         ))
@@ -213,9 +425,9 @@ def interpretation_sections(by_scenario: dict[str, list[dict]]) -> list[tuple[st
 
 
 def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
-    by_scenario: dict[str, list[dict]] = defaultdict(list)
-    for run in runs:
-        by_scenario[run["scenario"]].append(run)
+    """Zostaví hlavný Markdown report nad agregovanými výsledkami."""
+    by_scenario = group_runs_by_scenario(runs)
+    aggregate = build_aggregate_summary(runs)
 
     lines: list[str] = []
     lines.append("# IoT Security Testbed - Agregovana analyza vysledkov\n")
@@ -244,7 +456,7 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
     lines.append("| Scenar | Behy s varovaniami |")
     lines.append("|--------|--------------------|")
     for scenario in SCENARIO_ORDER:
-        lines.append(f"| {SCENARIO_LABELS.get(scenario, scenario)} | {warning_count(by_scenario, scenario)} |")
+        lines.append(f"| {SCENARIO_LABELS.get(scenario, scenario)} | {warning_run_count(by_scenario, scenario)} |")
     lines.append("")
 
     lines.append("## 2. Before vs After - KPI tabulka\n")
@@ -255,8 +467,14 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
         baseline_scenario, secure_scenario = scenario_pair_for_kpi(key)
         base_avg = get_avg(by_scenario, key, baseline_scenario)
         sec_avg = get_avg(by_scenario, key, secure_scenario)
-        base_str = f"{fmt(base_avg)} ({meta['baseline_expect']})" if base_avg is not None else f"- ({meta['baseline_expect']})"
-        sec_str = f"{fmt(sec_avg)} ({meta['secure_expect']})" if sec_avg is not None else f"- ({meta['secure_expect']})"
+        if base_avg is not None:
+            base_str = f"{fmt(base_avg)} ({meta['baseline_expect']})"
+        else:
+            base_str = f"- ({meta['baseline_expect']})"
+        if sec_avg is not None:
+            sec_str = f"{fmt(sec_avg)} ({meta['secure_expect']})"
+        else:
+            sec_str = f"- ({meta['secure_expect']})"
         lines.append(
             f"| {meta['label']} | {base_str} | {sec_str} | "
             f"{check(base_avg, meta['baseline_ok']) if base_avg is not None else '-'} | "
@@ -264,7 +482,15 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
         )
     lines.append("")
 
-    lines.append("## 3. Vizualizacia KPI (ASCII)\n")
+    lines.append("## 3. Explicitna uspesnost behov\n")
+    lines.append(
+        "Binarne PASS/FAIL vyhodnotenie je odvodene z `KPI_META` check funkcii a z toho, "
+        "ci `summary.json` obsahuje warningy.\n"
+    )
+    lines.extend(build_success_rate_table_lines(aggregate, use_labels=True))
+    lines.append("")
+
+    lines.append("## 4. Vizualizacia KPI (ASCII)\n")
 
     def ascii_bar(value: float, maximum: float, width: int = 30) -> str:
         if maximum <= 0:
@@ -289,12 +515,12 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
         lines.append(f"    Secure {ascii_bar(sec_avg, maximum)}  {fmt(sec_avg)}")
         lines.append("```\n")
 
-    lines.append("## 4. Interpretacia vysledkov\n")
+    lines.append("## 5. Interpretacia vysledkov\n")
     for heading, text in interpretation_sections(by_scenario):
         lines.append(f"### {heading}\n")
         lines.append(text + "\n")
 
-    lines.append("## 5. Dopad na CIA a CVSS v4.0 hodnotenie\n")
+    lines.append("## 6. Dopad na CIA a CVSS v4.0 hodnotenie\n")
     lines.append("Poznamka: CVSS a CIA su analyticky odhad autora, nie automaticky merane KPI.\n")
     lines.append("Skore je uvedene ako porovnanie stavu pred mitigaciou a po mitigacii.\n")
     lines.append("| # | Zranitelnost | C | I | A | CVSS v4.0 (pred) | CVSS v4.0 (po) |")
@@ -309,7 +535,7 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
         "P3=2.1 (rollback attack bez version-pinningu).\n"
     )
 
-    lines.append("## 6. Verzie komponentov (reprodukovatelnost)\n")
+    lines.append("## 7. Verzie komponentov (reprodukovatelnost)\n")
     lines.append("| Komponent | Verzia |")
     lines.append("|-----------|--------|")
     for component, version in COMPONENT_VERSIONS:
@@ -327,6 +553,7 @@ def build_markdown(runs: list[dict], selected_run_ids: list[str]) -> str:
 
 
 def create_figures(by_scenario: dict[str, list[dict]]) -> None:
+    """Vygeneruje publikačné grafy pre MQTT, CoAP, OTA, CVSS a CIA."""
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -378,7 +605,7 @@ def create_figures(by_scenario: dict[str, list[dict]]) -> None:
 
     coap_keys = [
         ("P2_coap_plain_gets", "Plaintext GETs"),
-        ("P2_coap_plain_blocked", "Blokovanie 5683"),
+        ("P2_coap_plain_blocked", "Plaintext endpoint disabled"),
         ("P2_coap_dtls_failures", "Wrong PSK fail"),
         ("P2_coap_dtls_ok", "Correct PSK OK"),
     ]
@@ -388,7 +615,7 @@ def create_figures(by_scenario: dict[str, list[dict]]) -> None:
         ax.bar(["Baseline", "Secure"], values, color=[c_base if values[0] else c_gray, c_sec])
         ax.set_title(title)
         ax.set_ylabel("Priemer KPI")
-    fig.suptitle("P2 - CoAP: Plaintext a DTLS/PSK merania", fontsize=13, fontweight="bold")
+    fig.suptitle("P2 - CoAP: plaintext endpoint a DTLS/PSK merania", fontsize=13, fontweight="bold")
     fig.text(0.5, -0.01, "Zdroj: vlastne merania", ha="center", fontsize=8, style="italic", color="#555")
     plt.savefig(FIGURES_DIR / "fig2_p2_coap_kpi.png")
     plt.close()
@@ -430,7 +657,15 @@ def create_figures(by_scenario: dict[str, list[dict]]) -> None:
     ax.set_ylabel("CVSS v4.0 Base score")
     ax.set_title("CVSS v4.0 - pred a po mitigacii")
     ax.legend()
-    fig.text(0.5, -0.03, "Zdroj: vlastne hodnotenie podla FIRST CVSS v4.0", ha="center", fontsize=8, style="italic", color="#555")
+    fig.text(
+        0.5,
+        -0.03,
+        "Zdroj: vlastne hodnotenie podla FIRST CVSS v4.0",
+        ha="center",
+        fontsize=8,
+        style="italic",
+        color="#555",
+    )
     plt.savefig(FIGURES_DIR / "fig4_cvss_scores.png")
     plt.close()
 
@@ -454,6 +689,7 @@ def create_figures(by_scenario: dict[str, list[dict]]) -> None:
 
 
 def main() -> int:
+    """Načíta výsledky behov a vygeneruje všetky agregačné výstupy."""
     selected_run_ids = parse_run_ids(os.getenv("ANALYZE_RUN_IDS"))
     selected_run_id_set = set(selected_run_ids) if selected_run_ids else None
     runs = load_runs(selected_run_id_set)
@@ -467,12 +703,20 @@ def main() -> int:
             print(f"Pozadovane run IDs: {', '.join(selected_run_ids)}")
         else:
             print("Ziadne runs s novym formatom summary.json (obsahujuce 'kpi' kluc) neboli najdene.")
-            print("Spusti aspon jeden scenar cez `make <scenar>` alebo fallback `bash scripts/_run_all.sh`, a potom `make analyze`.")
+            print(
+                "Spusti aspon jeden scenar cez `make <scenar>` alebo fallback "
+                "`bash scripts/_run_all.sh`, a potom `make analyze`."
+            )
         return 0
 
-    by_scenario: dict[str, list[dict]] = defaultdict(list)
-    for run in runs:
-        by_scenario[run["scenario"]].append(run)
+    by_scenario = group_runs_by_scenario(runs)
+    aggregate = build_aggregate_summary(runs)
+    write_aggregate_outputs(
+        aggregate,
+        AGGREGATE_JSON_PATH,
+        AGGREGATE_MARKDOWN_PATH,
+        legacy_json_path=LEGACY_AGGREGATE_JSON_PATH,
+    )
 
     if selected_run_ids:
         found_ids = {run["run_id"] for run in runs}
@@ -485,6 +729,8 @@ def main() -> int:
 
     print(build_markdown(runs, selected_run_ids))
     create_figures(by_scenario)
+    print(f"[AGGREGATE] JSON ulozene do: {AGGREGATE_JSON_PATH}", file=sys.stderr)
+    print(f"[AGGREGATE] Markdown ulozene do: {AGGREGATE_MARKDOWN_PATH}", file=sys.stderr)
     print(f"\n[GRAFY] Vsetky grafy ulozene do: {FIGURES_DIR}", file=sys.stderr)
     return 0
 

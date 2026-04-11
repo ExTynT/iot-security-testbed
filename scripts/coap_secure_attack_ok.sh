@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Compatibility wrapper for the old script name.
+# Kompatibilitný presmerovací skript pre historický názov.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "[INFO] scripts/coap_secure_attack_ok.sh je legacy wrapper."
-echo "[INFO] Presmerovavam na scripts/coap_secure_attack_ok_psk.sh."
+echo "[INFO] scripts/coap_secure_attack_ok.sh je historický wrapper."
+echo "[INFO] Presmerovávam na scripts/coap_secure_attack_ok_psk.sh."
 exec bash scripts/coap_secure_attack_ok_psk.sh

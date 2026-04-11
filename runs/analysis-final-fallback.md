@@ -46,8 +46,8 @@ Priemerne hodnoty KPI napriec replikaciami.
 | KPI | Baseline (priemer) | Secure (priemer) | Baseline OK? | Secure OK? |
 |---|---|---|---|---|
 | MQTT unauth denied | 0 (= 0 (utok uspel)) | 30 (> 0 (odmietnuty)) | OK | OK |
-| CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (port blokovany)) | OK | OK |
-| CoAP plain port blocked | 0 (N/A) | 3 (> 0 (iptables OK)) | OK | OK |
+| CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (plaintext endpoint disabled)) | OK | OK |
+| CoAP plaintext endpoint disabled | 0 (N/A) | 3 (> 0 (plaintext endpoint disabled)) | OK | OK |
 | CoAP DTLS failures (wrong PSK) | 0 (N/A) | 5 (> 0 (odmietnuty)) | OK | OK |
 | CoAP DTLS OK (spravny PSK) | 0 (N/A) | 1 (>= 1 (DTLS funguje)) | OK | OK |
 | OTA evil applied | 1 (> 0 (evil nasadeny)) | 0 (= 0 (zablokovany)) | OK | OK |
@@ -97,9 +97,9 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 Baseline scenar potvrdzuje, ze broker bez TLS/auth umoznuje publikovanie lubovolnemu klientovi (P1_mqtt_unauth_denied = 0). Po nasadeni mitigacie (TLS 8883 + ACL + heslo) broker odmietol neautorizovanych klientov (P1_mqtt_unauth_denied > 0), pricom kontrolne autorizovane publish/subscribe operacie nadalej fungovali.
 
-### P2 - CoAP DTLS/PSK a segmentacia
+### P2 - CoAP DTLS/PSK a secure-only endpoint
 
-Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. Secure scenar blokuje port 5683 pomocou iptables (P2_coap_plain_blocked > 0) a vyzaduje DTLS/PSK na porte 5684. Pokus so zlym PSK bol odmietnuty (P2_coap_dtls_failures > 0), spravny PSK bol akceptovany (P2_coap_dtls_ok >= 1).
+Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. Secure scenar neexponuje plaintext endpoint na porte 5683 (P2_coap_plain_blocked > 0) a vyzaduje DTLS/PSK na porte 5684. Pokus so zlym PSK bol odmietnuty (P2_coap_dtls_failures > 0), spravny PSK bol akceptovany (P2_coap_dtls_ok >= 1).
 
 ### P3 - OTA integrita (minisign Ed25519)
 

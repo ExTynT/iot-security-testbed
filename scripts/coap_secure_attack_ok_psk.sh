@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CoAP Secure - kontrolny beh so spravnym PSK
+# CoAP secure scenár: kontrolný beh so správnym PSK.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/run_secrets.sh

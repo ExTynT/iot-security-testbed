@@ -13,6 +13,9 @@ if command -v cygpath >/dev/null 2>&1; then
 fi
 
 mkdir -p "$(dirname "$OUTPUT_PATH")"
+rm -rf "runs/$FIGURES_SUBDIR"
+mkdir -p "runs/$FIGURES_SUBDIR"
+docker compose build monitor-collector 1>&2
 
 if [ -n "$RUN_IDS" ]; then
   docker compose run --rm \
@@ -20,6 +23,7 @@ if [ -n "$RUN_IDS" ]; then
     -e "ANALYZE_FIGURES_SUBDIR=$FIGURES_SUBDIR" \
     -v "${RUNS_MOUNT}:/runs" --entrypoint python monitor-collector /app/analyze_results.py > "$OUTPUT_PATH"
   echo "Finalna analyza ulozena do $OUTPUT_PATH"
+  echo "Agregovane success rates ulozene do runs/analysis-aggregate.md a runs/analysis-aggregate.json"
   echo "Vybrate run IDs: $RUN_IDS"
   echo "Grafy ulozene do runs/$FIGURES_SUBDIR"
 else
@@ -27,5 +31,6 @@ else
     -e "ANALYZE_FIGURES_SUBDIR=$FIGURES_SUBDIR" \
     -v "${RUNS_MOUNT}:/runs" --entrypoint python monitor-collector /app/analyze_results.py > "$OUTPUT_PATH"
   echo "Agregovana analyza ulozena do $OUTPUT_PATH"
+  echo "Agregovane success rates ulozene do runs/analysis-aggregate.md a runs/analysis-aggregate.json"
   echo "Grafy ulozene do runs/$FIGURES_SUBDIR"
 fi

@@ -1,0 +1,56 @@
+{
+  "dataset_id": "thesis-final-20260322",
+  "description": "Autoritatívny šesťbehový dataset pre finálny text bakalárskej práce.",
+  "selection_policy": "Jeden validovaný beh pre každý scenár z replikačnej kampane zo dňa 2026-03-22.",
+  "run_ids": [
+    "20260322-161426",
+    "20260322-161440",
+    "20260322-161453",
+    "20260322-161510",
+    "20260322-161634",
+    "20260322-161643"
+  ],
+  "runs": [
+    {
+      "run_id": "20260322-161426",
+      "scenario": "mqtt-baseline",
+      "summary_path": "runs/20260322-161426/results/summary.json"
+    },
+    {
+      "run_id": "20260322-161440",
+      "scenario": "mqtt-secure",
+      "summary_path": "runs/20260322-161440/results/summary.json"
+    },
+    {
+      "run_id": "20260322-161453",
+      "scenario": "coap-baseline",
+      "summary_path": "runs/20260322-161453/results/summary.json"
+    },
+    {
+      "run_id": "20260322-161510",
+      "scenario": "coap-secure",
+      "summary_path": "runs/20260322-161510/results/summary.json"
+    },
+    {
+      "run_id": "20260322-161634",
+      "scenario": "ota-baseline",
+      "summary_path": "runs/20260322-161634/results/summary.json"
+    },
+    {
+      "run_id": "20260322-161643",
+      "scenario": "ota-secure",
+      "summary_path": "runs/20260322-161643/results/summary.json"
+    }
+  ],
+  "analysis_commands": {
+    "make": "make analyze-final RUN_IDS=20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643",
+    "fallback": "bash scripts/analyze_runs.sh 20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643"
+  },
+  "analysis_outputs": [
+    "runs/analysis-final.md",
+    "runs/analysis-aggregate.md",
+    "runs/analysis-aggregate.json",
+    "runs/aggregate.json",
+    "runs/figures-final/"
+  ]
+}

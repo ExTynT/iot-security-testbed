@@ -4,31 +4,55 @@
 
 Analyza bola vygenerovana nad explicitne zvolenou finalnou mnozinou behov.
 
-Vybrate run IDs: **20260322-161426, 20260322-161440, 20260322-161453, 20260322-161510, 20260322-161634, 20260322-161643**
+Vybrate run IDs: **20260410-192908, 20260410-192936, 20260410-193000, 20260410-193022, 20260410-193154, 20260410-193218, 20260410-193239, 20260410-193303, 20260410-193327, 20260410-193350, 20260410-193524, 20260410-193546, 20260410-193607, 20260410-193630, 20260410-193657, 20260410-193720, 20260410-193852, 20260410-193913, 20260410-193934, 20260410-193957, 20260410-194021, 20260410-194043, 20260410-194216, 20260410-194237, 20260410-194258, 20260410-194321, 20260410-194345, 20260410-194410, 20260410-194542, 20260410-194603**
 
 Figury boli ulozene do: **runs/figures-final/**
 
 ## 1. Prehlad runs
 
-Celkovy pocet behov: **6**
+Celkovy pocet behov: **30**
 
 | Run ID | Scenar |
 |--------|--------|
-| 20260322-161426 | mqtt-baseline |
-| 20260322-161440 | mqtt-secure |
-| 20260322-161453 | coap-baseline |
-| 20260322-161510 | coap-secure |
-| 20260322-161634 | ota-baseline |
-| 20260322-161643 | ota-secure |
+| 20260410-192908 | mqtt-baseline |
+| 20260410-192936 | mqtt-secure |
+| 20260410-193000 | coap-baseline |
+| 20260410-193022 | coap-secure |
+| 20260410-193154 | ota-baseline |
+| 20260410-193218 | ota-secure |
+| 20260410-193239 | mqtt-baseline |
+| 20260410-193303 | mqtt-secure |
+| 20260410-193327 | coap-baseline |
+| 20260410-193350 | coap-secure |
+| 20260410-193524 | ota-baseline |
+| 20260410-193546 | ota-secure |
+| 20260410-193607 | mqtt-baseline |
+| 20260410-193630 | mqtt-secure |
+| 20260410-193657 | coap-baseline |
+| 20260410-193720 | coap-secure |
+| 20260410-193852 | ota-baseline |
+| 20260410-193913 | ota-secure |
+| 20260410-193934 | mqtt-baseline |
+| 20260410-193957 | mqtt-secure |
+| 20260410-194021 | coap-baseline |
+| 20260410-194043 | coap-secure |
+| 20260410-194216 | ota-baseline |
+| 20260410-194237 | ota-secure |
+| 20260410-194258 | mqtt-baseline |
+| 20260410-194321 | mqtt-secure |
+| 20260410-194345 | coap-baseline |
+| 20260410-194410 | coap-secure |
+| 20260410-194542 | ota-baseline |
+| 20260410-194603 | ota-secure |
 
 | Scenar | Pocet replikacii |
 |--------|-----------------|
-| P1 MQTT Baseline | 1 |
-| P1 MQTT Secure | 1 |
-| P2 CoAP Baseline | 1 |
-| P2 CoAP Secure | 1 |
-| P3 OTA Baseline | 1 |
-| P3 OTA Secure | 1 |
+| P1 MQTT Baseline | 5 |
+| P1 MQTT Secure | 5 |
+| P2 CoAP Baseline | 5 |
+| P2 CoAP Secure | 5 |
+| P3 OTA Baseline | 5 |
+| P3 OTA Secure | 5 |
 
 | Scenar | Behy s varovaniami |
 |--------|--------------------|
@@ -46,8 +70,8 @@ Priemerne hodnoty KPI napriec replikaciami.
 | KPI | Baseline (priemer) | Secure (priemer) | Baseline OK? | Secure OK? |
 |---|---|---|---|---|
 | MQTT unauth denied | 0 (= 0 (utok uspel)) | 30 (> 0 (odmietnuty)) | OK | OK |
-| CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (port blokovany)) | OK | OK |
-| CoAP plain port blocked | 0 (N/A) | 3 (> 0 (iptables OK)) | OK | OK |
+| CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (plaintext endpoint disabled)) | OK | OK |
+| CoAP plaintext endpoint disabled | 0 (N/A) | 3 (> 0 (plaintext endpoint disabled)) | OK | OK |
 | CoAP DTLS failures (wrong PSK) | 0 (N/A) | 5 (> 0 (odmietnuty)) | OK | OK |
 | CoAP DTLS OK (spravny PSK) | 0 (N/A) | 1 (>= 1 (DTLS funguje)) | OK | OK |
 | OTA evil applied | 1 (> 0 (evil nasadeny)) | 0 (= 0 (zablokovany)) | OK | OK |
@@ -97,9 +121,9 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 Baseline scenar potvrdzuje, ze broker bez TLS/auth umoznuje publikovanie lubovolnemu klientovi (P1_mqtt_unauth_denied = 0). Po nasadeni mitigacie (TLS 8883 + ACL + heslo) broker odmietol neautorizovanych klientov (P1_mqtt_unauth_denied > 0), pricom kontrolne autorizovane publish/subscribe operacie nadalej fungovali.
 
-### P2 - CoAP DTLS/PSK a segmentacia
+### P2 - CoAP DTLS/PSK a secure-only endpoint
 
-Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. Secure scenar blokuje port 5683 pomocou iptables (P2_coap_plain_blocked > 0) a vyzaduje DTLS/PSK na porte 5684. Pokus so zlym PSK bol odmietnuty (P2_coap_dtls_failures > 0), spravny PSK bol akceptovany (P2_coap_dtls_ok >= 1).
+Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. Secure scenar neexponuje plaintext endpoint na porte 5683 (P2_coap_plain_blocked > 0) a vyzaduje DTLS/PSK na porte 5684. Pokus so zlym PSK bol odmietnuty (P2_coap_dtls_failures > 0), spravny PSK bol akceptovany (P2_coap_dtls_ok >= 1).
 
 ### P3 - OTA integrita (minisign Ed25519)
 
@@ -133,4 +157,4 @@ Skore je uvedene ako porovnanie stavu pred mitigaciou a po mitigacii.
 | OpenSSL (DTLS klient) | 3.x (Alpine 3.20) |
 
 ---
-*Generovane automaticky z 6 explicitne zvolenych run(s) v priecinku `/runs` so scope `20260322-161426, 20260322-161440, 20260322-161453, 20260322-161510, 20260322-161634, 20260322-161643`.*
+*Generovane automaticky z 30 explicitne zvolenych run(s) v priecinku `/runs` so scope `20260410-192908, 20260410-192936, 20260410-193000, 20260410-193022, 20260410-193154, 20260410-193218, 20260410-193239, 20260410-193303, 20260410-193327, 20260410-193350, 20260410-193524, 20260410-193546, 20260410-193607, 20260410-193630, 20260410-193657, 20260410-193720, 20260410-193852, 20260410-193913, 20260410-193934, 20260410-193957, 20260410-194021, 20260410-194043, 20260410-194216, 20260410-194237, 20260410-194258, 20260410-194321, 20260410-194345, 20260410-194410, 20260410-194542, 20260410-194603`.*

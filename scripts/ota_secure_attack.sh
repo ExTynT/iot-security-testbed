@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Compatibility wrapper for the old secure OTA attack helper.
+# Kompatibilitný presmerovací skript pre starý helper OTA secure útoku.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "[INFO] scripts/ota_secure_attack.sh je legacy wrapper."
-echo "[INFO] Pre plny secure scenar najprv spusti scripts/ota_secure_control_signed.sh a potom scripts/ota_attack_evil.sh."
+echo "[INFO] scripts/ota_secure_attack.sh je historický wrapper."
+echo "[INFO] Pre plný secure scenár najprv spusti scripts/ota_secure_control_signed.sh a potom scripts/ota_attack_evil.sh."
 exec bash scripts/ota_attack_evil.sh

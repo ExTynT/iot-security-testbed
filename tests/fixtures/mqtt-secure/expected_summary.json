@@ -1,4 +1,15 @@
 {
+  "meta": {
+    "schema_version": "1.0.0",
+    "run_id": "fixture-mqtt-secure-001",
+    "profile": "secure",
+    "git_commit": "1111111111111111111111111111111111111111",
+    "created_at": "2026-03-22T15:14:00Z",
+    "compose_files": [
+      "docker-compose.yml",
+      "docker-compose.mqtt-secure.yml"
+    ]
+  },
   "scenario": "mqtt-secure",
   "kpi": {
     "P1_mqtt_unauth_denied": 30,

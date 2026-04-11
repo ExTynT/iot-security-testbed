@@ -1,4 +1,4 @@
-# MQTT Secure overlay: TLS (port 8883) + ACL + password auth
+# MQTT secure overlay: TLS na porte 8883, ACL a heslová autentifikácia.
 # Použitie:
 #   docker compose -f docker-compose.yml -f docker-compose.mqtt-secure.yml up -d
 services:

@@ -1,9 +1,9 @@
-# CoAP Secure overlay: DTLS/PSK na porte 5684, port 5683 blokovany
-# Pouzitie:
+# CoAP secure overlay: DTLS/PSK na porte 5684, nešifrovaný endpoint 5683 sa nevytvára.
+# Použitie:
 #   docker compose -f docker-compose.yml -f docker-compose.coap-secure.yml up -d
 #
-# Prerekvizita: libcoap musi byt skompilovane s DTLS (OpenSSL). Dockerfile to
-# robi automaticky, ked je openssl-dev pritomne.
+# Prerekvizita: libcoap musí byť skompilovaný s DTLS cez OpenSSL.
+# Dockerfile to robí automaticky pri prítomnosti balíka openssl-dev.
 services:
   coap:
     healthcheck:
@@ -16,7 +16,7 @@ services:
           coaps://127.0.0.1:5684/.well-known/core >/dev/null 2>&1
     secrets:
       - coap_psk
-    # Secure build vytvara iba DTLS endpoint; plaintext 5683 ostava zavrety bez firewallu.
+    # Secure build vytvára iba DTLS endpoint; nešifrovaný port 5683 ostáva zatvorený bez firewallu.
     command:
       - sh
       - -c

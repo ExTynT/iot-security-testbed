@@ -1,0 +1,53 @@
+{
+  "totals": {
+    "runs": 30,
+    "pass_count": 30,
+    "fail_count": 0,
+    "success_rate": 1.0,
+    "warning_count": 0
+  },
+  "scenarios": {
+    "mqtt-baseline": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    },
+    "mqtt-secure": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    },
+    "coap-baseline": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    },
+    "coap-secure": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    },
+    "ota-baseline": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    },
+    "ota-secure": {
+      "runs": 5,
+      "pass_count": 5,
+      "fail_count": 0,
+      "success_rate": 1.0,
+      "warning_count": 0
+    }
+  }
+}

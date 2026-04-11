@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# OTA utok - attacker presmeruje DUT na evil OTA server
-# Baseline: DUT aplikuje evil firmware (KPI: ota_applied>0)
-# Secure:   DUT odmietne (neplatny podpis) (KPI: ota_blocked>0)
+# OTA útok: attacker presmeruje DUT na škodlivý OTA server.
+# Baseline: DUT aplikuje škodlivý firmvér (KPI: ota_applied > 0).
+# Secure: DUT aktualizáciu odmietne pre neplatný podpis (KPI: ota_blocked > 0).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
