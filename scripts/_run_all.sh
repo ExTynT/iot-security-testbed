@@ -27,14 +27,15 @@ ensure_ota_keys() {
       -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
   fi
   printf '\n' | "$MINISIGN_BIN" \
-    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json >/dev/null
+    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json \
+    -x "runs/${1}/state/manifest.json.minisig" >/dev/null
 }
 
 write_compose_files_state() {
   local run_id="$1"
   local compose_args="$2"
 
-  printf '%s\n' "$compose_args" | grep -oE 'docker-compose[^[:space:]]+\.yml' \
+  printf '%s\n' "$compose_args" | grep -oE 'docker-compose(\.[^[:space:]]+)?\.yml' \
     > "runs/${run_id}/state/compose_files.txt"
 }
 
@@ -42,8 +43,7 @@ run_case() {
   local name="$1"
   local compose_args="$2"
   shift 2
-  cleanup() { docker compose $compose_args down --remove-orphans || true; }
-  trap cleanup EXIT
+  trap "docker compose $compose_args down --remove-orphans || true" EXIT
 
   bash scripts/new_run.sh
   RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
@@ -59,7 +59,7 @@ run_case() {
 
   run_collector
   trap - EXIT
-  cleanup
+  docker compose $compose_args down --remove-orphans || true
 }
 
 echo ""
@@ -96,11 +96,11 @@ for rep in $(seq 1 "${REPLICATIONS}"); do
 
   echo ""
   echo "========== OTA SECURE [${rep}/${REPLICATIONS}] =========="
-  ensure_ota_keys
-  cleanup() { docker compose $OTA_S down --remove-orphans || true; }
-  trap cleanup EXIT
   bash scripts/new_run.sh
   RUN_ID=$(grep '^RUN_ID=' .env | cut -d= -f2)
+  ensure_ota_keys "$RUN_ID"
+  cleanup() { docker compose $OTA_S down --remove-orphans || true; }
+  trap cleanup EXIT
   echo "ota-secure" > "runs/${RUN_ID}/state/scenario.txt"
   write_compose_files_state "$RUN_ID" "$OTA_S"
   docker compose $OTA_S up -d --wait --wait-timeout 90

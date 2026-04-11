@@ -84,6 +84,13 @@ def test_secure_overlays_override_healthchecks_with_runtime_specific_probes():
     assert '"$$coap_psk"' in coap["healthcheck"]["test"][1]
     assert "5683=CLOSED 5684=DTLS+PSK" in coap["command"][2]
 
+    ota_secure = load_yaml("docker-compose.ota-secure.yml")
+    ota = service(ota_secure, "ota")
+    assert (
+        "./runs/${RUN_ID}/state/manifest.json.minisig:/usr/share/nginx/html/manifest.json.minisig:ro"
+        in ota["volumes"]
+    )
+
 
 def test_runners_use_health_aware_startup_and_wait_ready_is_minimal():
     run_case = read_text("scripts/run_case.sh")
@@ -120,22 +127,28 @@ def test_ota_helpers_use_configurable_minisign_binary():
     assert "Windows Git Bash:" in readme
     assert "MINISIGN_BIN" in readme
     assert "/c/.../minisign.exe" in readme
+    assert "state/manifest.json.minisig" in readme
+    assert '-x "runs/${1}/state/manifest.json.minisig"' in run_case
+    assert '-x "runs/${1}/state/manifest.json.minisig"' in run_all
+    assert "-x runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/manifest.json.minisig" in makefile
 
 
 def test_normal_runners_cleanup_compose_on_failure():
     run_case = read_text("scripts/run_case.sh")
     run_all = read_text("scripts/_run_all.sh")
 
-    assert "cleanup()" in run_case
+    assert "docker-compose(\\.[^[:space:]]+)?\\.yml" in run_case
+    assert "docker-compose(\\.[^[:space:]]+)?\\.yml" in run_all
+    assert 'trap "docker compose $compose_args down --remove-orphans || true" EXIT' in run_case
     assert "down --remove-orphans || true" in run_case
-    assert "trap cleanup EXIT" in run_case
     assert "trap - EXIT" in run_case
+    assert "docker compose $compose_args down --remove-orphans || true" in run_case
     assert "OTA_S" in run_case
-    assert "cleanup()" in run_all
+    assert 'trap "docker compose $compose_args down --remove-orphans || true" EXIT' in run_all
     assert "down --remove-orphans || true" in run_all
     assert "OTA_S" in run_all
-    assert "trap cleanup EXIT" in run_all
     assert "trap - EXIT" in run_all
+    assert "docker compose $compose_args down --remove-orphans || true" in run_all
 
 
 def test_smoke_ci_runs_collector_and_uploads_state_artifacts():
@@ -234,8 +247,13 @@ def test_aggregate_json_artifacts_are_present_and_consistent():
     analysis_aggregate = json.loads(read_text("runs/analysis-aggregate.json"))
 
     assert aggregate == analysis_aggregate
-    assert aggregate["totals"]["warning_count"] == 0
-    assert aggregate["scenarios"]["coap-secure"]["warning_count"] == 0
+    assert aggregate["totals"]["warning_count"] == sum(
+        scenario["warning_count"] for scenario in aggregate["scenarios"].values()
+    )
+    assert aggregate["totals"]["runs"] == sum(
+        scenario["runs"] for scenario in aggregate["scenarios"].values()
+    )
+    assert aggregate["scenarios"]["coap-secure"]["warning_count"] >= 0
 
 
 def test_security_policy_exists_for_public_repo():

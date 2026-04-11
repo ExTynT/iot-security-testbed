@@ -4,10 +4,13 @@
 #
 # Prerekvizita:
 #   1. Vygeneruj kľúče: minisign -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
-#   2. Podpíš manifest: minisign -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json
+#   2. Podpíš manifest do per-run state/ artefaktu pred štartom scenára.
 services:
   dut:
     environment:
       - MINISIGN_PUBKEY_FILE=/config/minisign.pub
     volumes:
       - ./configs/ota/minisign.pub:/config/minisign.pub:ro
+  ota:
+    volumes:
+      - ./runs/${RUN_ID}/state/manifest.json.minisig:/usr/share/nginx/html/manifest.json.minisig:ro

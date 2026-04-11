@@ -93,6 +93,9 @@ ota-secure: _ota-keys
 	scripts/new_run.sh
 	@echo "ota-secure" > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/scenario.txt
 	@printf '%s\n' docker-compose.yml docker-compose.ota-secure.yml > runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/compose_files.txt
+	@printf '\n' | "$(MINISIGN_BIN)" \
+	  -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json \
+	  -x runs/$$(grep '^RUN_ID=' .env | cut -d= -f2)/state/manifest.json.minisig > /dev/null
 	$(COMPOSE) $(OTA_S) up -d --wait --wait-timeout 90
 	bash scripts/wait_ready.sh ota-secure
 	bash scripts/ota_secure_control_signed.sh
@@ -106,8 +109,6 @@ _ota-keys:
 	@test -f configs/ota/minisign.pub || \
 	  (printf '\n\n' | "$(MINISIGN_BIN)" \
 	    -G -p configs/ota/minisign.pub -s configs/ota/minisign.key)
-	@printf '\n' | "$(MINISIGN_BIN)" \
-	  -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json > /dev/null
 
 # ─── Replikácie (N opakovaní každého scenára) ─────────────────────────────────
 replicate-mqtt:

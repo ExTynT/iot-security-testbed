@@ -144,7 +144,7 @@ Všetky scenáre používajú rovnaký základný priebeh:
 7. zber artefaktov cez `monitor-collector`
 8. `docker compose down --remove-orphans`
 
-Výnimkou je `ota-secure`, ktorý pred behom ešte zabezpečí prítomnosť `minisign` kľúčov a podpis manifestu.
+Výnimkou je `ota-secure`, ktorý pred behom ešte zabezpečí prítomnosť `minisign` kľúčov a uloží podpis manifestu do per-run `state/manifest.json.minisig`.
 
 `summary.json` je schémovo pevný a samopopisný artefakt. Validuje sa proti [`schemas/summary.schema.json`](schemas/summary.schema.json) a okrem KPI obsahuje aj:
 
@@ -203,6 +203,7 @@ Každý beh vytvára samostatný priečinok `runs/<run_id>/` s jednotnou štrukt
 - `state/scenario.txt`
 - `state/compose_files.txt`
 - `state/run_meta.json`
+- `state/manifest.json.minisig` pri `ota-secure`
 - `state/version.json` alebo `state/version.txt`, ak DUT exportuje stav verzie
 
 Táto štruktúra je zámerná. Umožňuje spätne prepojiť interpretáciu výsledkov s konkrétnymi logmi, sieťovými stopami, provenienciou runu a identitou použitej Compose konfigurácie. Na presnú rekonštrukciu scenára je potrebné prepnutie repozitára na zaznamenaný `git_commit`; pri secure behoch treba navyše zohľadniť per-run secrets a v prípade `ota-secure` aj lokálne dostupný `minisign`.

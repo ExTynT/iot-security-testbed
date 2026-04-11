@@ -35,14 +35,15 @@ ensure_ota_keys() {
       -G -p configs/ota/minisign.pub -s configs/ota/minisign.key
   fi
   printf '\n' | "$MINISIGN_BIN" \
-    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json >/dev/null
+    -S -s configs/ota/minisign.key -m configs/ota/repo/manifest.json \
+    -x "runs/${1}/state/manifest.json.minisig" >/dev/null
 }
 
 write_compose_files_state() {
   local run_id="$1"
   local compose_args="$2"
 
-  printf '%s\n' "$compose_args" | grep -oE 'docker-compose[^[:space:]]+\.yml' \
+  printf '%s\n' "$compose_args" | grep -oE 'docker-compose(\.[^[:space:]]+)?\.yml' \
     > "runs/${run_id}/state/compose_files.txt"
 }
 
@@ -54,8 +55,7 @@ run_common_case() {
   local scenario="$1"
   local compose_args="$2"
   shift 2
-  cleanup() { docker compose $compose_args down --remove-orphans || true; }
-  trap cleanup EXIT
+  trap "docker compose $compose_args down --remove-orphans || true" EXIT
 
   bash scripts/new_run.sh
   local run_id
@@ -72,7 +72,7 @@ run_common_case() {
 
   run_collector
   trap - EXIT
-  cleanup
+  docker compose $compose_args down --remove-orphans || true
 }
 
 if [ $# -ne 1 ]; then
@@ -102,11 +102,11 @@ case "$1" in
     run_common_case "ota-baseline" "$BASE" "scripts/ota_attack_evil.sh"
     ;;
   ota-secure)
-    ensure_ota_keys
-    cleanup() { docker compose $OTA_S down --remove-orphans || true; }
-    trap cleanup EXIT
     bash scripts/new_run.sh
     run_id="$(grep '^RUN_ID=' .env | cut -d= -f2)"
+    ensure_ota_keys "$run_id"
+    cleanup() { docker compose $OTA_S down --remove-orphans || true; }
+    trap cleanup EXIT
     echo "ota-secure" > "runs/${run_id}/state/scenario.txt"
     write_compose_files_state "$run_id" "$OTA_S"
     docker compose $OTA_S up -d --wait --wait-timeout 90
