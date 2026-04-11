@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator, ValidationError
+from jsonschema import Draft202012Validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES_ROOT = PROJECT_ROOT / "tests" / "fixtures"
@@ -302,7 +302,7 @@ def test_build_summary_baseline_validates_against_schema():
     assert summary["meta"]["profile"] == "baseline"
 
 
-def test_summary_schema_rejects_invalid_created_at_format():
+def test_build_summary_normalizes_invalid_created_at_format():
     validator = build_summary_validator()
     summary = collector.build_summary(
         scenario="mqtt-secure",
@@ -314,8 +314,8 @@ def test_summary_schema_rejects_invalid_created_at_format():
         compose_files=["docker-compose.yml", "docker-compose.mqtt-secure.yml"],
     )
 
-    with pytest.raises(ValidationError):
-        validator.validate(summary)
+    validator.validate(summary)
+    assert summary["meta"]["created_at"] == "2026-04-10T18:23:36Z"
 
 
 def test_read_run_meta_infers_run_id_and_created_at_from_state_dir_when_missing(tmp_path):

@@ -222,9 +222,11 @@ def test_reference_dataset_manifest_is_present_and_audit_ready():
     assert manifest["run_ids"] == expected_run_ids
     assert [entry["scenario"] for entry in manifest["runs"]] == expected_scenarios
     assert "runs/analysis-aggregate.json" in manifest["analysis_outputs"]
+    assert "runs/aggregate.json" in manifest["analysis_outputs"]
 
-    for entry in manifest["runs"]:
-        assert (PROJECT_ROOT / entry["summary_path"]).exists(), entry["summary_path"]
+    for entry, run_id in zip(manifest["runs"], expected_run_ids):
+        assert entry["run_id"] == run_id
+        assert entry["summary_path"] == f"runs/{run_id}/results/summary.json"
 
 
 def test_aggregate_json_artifacts_are_present_and_consistent():

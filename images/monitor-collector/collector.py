@@ -112,6 +112,32 @@ def infer_created_at_from_run_id(run_id):
     return parsed.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def is_iso_datetime(value):
+    """Overí, či reťazec predstavuje platný ISO 8601 UTC timestamp."""
+    if not value:
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+def normalize_run_metadata(run_metadata=None):
+    """Normalizuje provenienčné metadáta do schémovo validného tvaru."""
+    run_metadata = run_metadata or {}
+    run_id = str(run_metadata.get("run_id", "")).strip() or "unknown-run"
+    git_commit = str(run_metadata.get("git_commit", "")).strip() or "unknown"
+    created_at = str(run_metadata.get("created_at", "")).strip()
+    if not is_iso_datetime(created_at):
+        created_at = infer_created_at_from_run_id(run_id) or utc_now_iso()
+    return {
+        "run_id": run_id,
+        "git_commit": git_commit,
+        "created_at": created_at,
+    }
+
+
 def read_run_meta(state_dir=STATE):
     """Načíta provenienčné metadáta runu.
 
@@ -156,7 +182,7 @@ def read_run_meta(state_dir=STATE):
         inferred_created_at = infer_created_at_from_run_id(metadata["run_id"])
         if inferred_created_at:
             metadata["created_at"] = inferred_created_at
-    return metadata
+    return normalize_run_metadata(metadata)
 
 
 def profile_for_scenario(scenario):
@@ -474,7 +500,7 @@ def build_summary(
     """
     logs = logs or {}
     pcap_bytes = pcap_bytes or {}
-    run_metadata = run_metadata or {}
+    run_metadata = normalize_run_metadata(run_metadata)
     compose_files = compose_files or compose_files_for_scenario(scenario)
 
     mqtt_result = parse_mqtt(
