@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import stat
 from pathlib import Path
 
@@ -14,6 +15,10 @@ def read_text(path: str) -> str:
 
 def load_yaml(path: str) -> dict:
     return yaml.safe_load((PROJECT_ROOT / path).read_text(encoding="utf-8"))
+
+
+def extract_markdown_links(text: str) -> list[str]:
+    return re.findall(r"\[[^\]]+\]\(([^)]+)\)", text)
 
 
 def service(compose: dict, service_name: str) -> dict:
@@ -180,12 +185,14 @@ def test_readme_documents_current_artifacts_and_aggregate_outputs():
 
     assert "secrets/" in readme
     assert "runs/final-dataset.json" in readme
-    assert "runs/analysis-aggregate.md" in readme
-    assert "runs/analysis-aggregate.json" in readme
-    assert "runs/aggregate.json" in readme
+    assert "runs/analysis-final-aggregate.md" in readme
+    assert "runs/analysis-final-aggregate.json" in readme
+    assert "runs/aggregate-final.json" in readme
+    assert "runs/reference/" in readme
     assert "state/run_meta.json" in readme
     assert "results/fig_kpi.png" in readme
     assert "summary.schema.json" in readme
+    assert "THESIS_NOTES.md" not in readme
 
 
 def test_readme_keeps_security_citation_and_dev_test_quality_signals():
@@ -214,14 +221,6 @@ def test_repo_exposes_machine_readable_citation_metadata():
 
 def test_reference_dataset_manifest_is_present_and_audit_ready():
     manifest = json.loads(read_text("runs/final-dataset.json"))
-    expected_run_ids = [
-        "20260322-161426",
-        "20260322-161440",
-        "20260322-161453",
-        "20260322-161510",
-        "20260322-161634",
-        "20260322-161643",
-    ]
     expected_scenarios = [
         "mqtt-baseline",
         "mqtt-secure",
@@ -231,20 +230,41 @@ def test_reference_dataset_manifest_is_present_and_audit_ready():
         "ota-secure",
     ]
 
-    assert manifest["dataset_id"] == "thesis-final-20260322"
-    assert manifest["run_ids"] == expected_run_ids
+    assert manifest["dataset_id"].startswith("thesis-final-")
+    assert len(manifest["run_ids"]) == 6
+    assert len(set(manifest["run_ids"])) == 6
     assert [entry["scenario"] for entry in manifest["runs"]] == expected_scenarios
-    assert "runs/analysis-aggregate.json" in manifest["analysis_outputs"]
-    assert "runs/aggregate.json" in manifest["analysis_outputs"]
+    assert manifest["run_ids"] == [entry["run_id"] for entry in manifest["runs"]]
+    assert manifest["analysis_commands"]["make"] == "make analyze-final"
+    assert manifest["analysis_commands"]["fallback"] == "bash scripts/analyze_runs.sh --final-dataset"
+    assert "runs/analysis-final-aggregate.json" in manifest["analysis_outputs"]
+    assert "runs/aggregate-final.json" in manifest["analysis_outputs"]
 
-    for entry, run_id in zip(manifest["runs"], expected_run_ids):
-        assert entry["run_id"] == run_id
-        assert entry["summary_path"] == f"runs/{run_id}/results/summary.json"
+    for entry in manifest["runs"]:
+        run_id = entry["run_id"]
+        assert entry["summary_path"] == f"runs/reference/{run_id}/summary.json"
 
 
-def test_aggregate_json_artifacts_are_present_and_consistent():
-    aggregate = json.loads(read_text("runs/aggregate.json"))
-    analysis_aggregate = json.loads(read_text("runs/analysis-aggregate.json"))
+def test_analysis_final_scope_matches_manifest_and_manifest_paths_exist():
+    manifest = json.loads(read_text("runs/final-dataset.json"))
+    analysis_final = read_text("runs/analysis-final.md")
+
+    scope_match = re.search(r"Vybrate run IDs: \*\*(.+?)\*\*", analysis_final)
+    assert scope_match is not None
+
+    analysis_run_ids = [item.strip() for item in scope_match.group(1).split(",") if item.strip()]
+    assert analysis_run_ids == manifest["run_ids"]
+
+    for entry in manifest["runs"]:
+        assert (PROJECT_ROOT / entry["summary_path"]).exists(), entry["summary_path"]
+
+    for output_path in manifest["analysis_outputs"]:
+        assert (PROJECT_ROOT / output_path).exists(), output_path
+
+
+def test_final_aggregate_json_artifacts_are_present_and_consistent():
+    aggregate = json.loads(read_text("runs/aggregate-final.json"))
+    analysis_aggregate = json.loads(read_text("runs/analysis-final-aggregate.json"))
 
     assert aggregate == analysis_aggregate
     assert aggregate["totals"]["warning_count"] == sum(
@@ -254,6 +274,15 @@ def test_aggregate_json_artifacts_are_present_and_consistent():
         scenario["runs"] for scenario in aggregate["scenarios"].values()
     )
     assert aggregate["scenarios"]["coap-secure"]["warning_count"] >= 0
+
+
+def test_readme_local_links_resolve_to_existing_repo_artifacts():
+    readme = read_text("README.md")
+
+    for link_target in extract_markdown_links(readme):
+        if "://" in link_target or link_target.startswith("#"):
+            continue
+        assert (PROJECT_ROOT / link_target).exists(), link_target
 
 
 def test_security_policy_exists_for_public_repo():

@@ -185,7 +185,7 @@ analyze:
 	$(BASH) -lc "cd . && ANALYZE_OUTPUT_PATH=runs/analysis.md ANALYZE_FIGURES_SUBDIR=figures bash scripts/analyze_runs.sh"
 
 analyze-final:
-	$(BASH) -lc "if [ -z '$(RUN_IDS)' ]; then echo 'Chyba: zadaj RUN_IDS=run1,run2,run3,...' && exit 1; fi; cd . && ANALYZE_OUTPUT_PATH=runs/analysis-final.md ANALYZE_FIGURES_SUBDIR=figures-final bash scripts/analyze_runs.sh '$(RUN_IDS)'"
+	$(BASH) -lc "cd . && bash scripts/analyze_runs.sh --final-dataset"
 
 clean:
 	$(COMPOSE) $(BASE) down -v --remove-orphans || true
@@ -210,6 +210,7 @@ help:
 	@echo ""
 	@echo "  Analýza výsledkov:"
 	@echo "    analyze            Agreguj všetky runs/ → runs/analysis.md"
+	@echo "    analyze-final      Agreguj finalny thesis dataset z runs/final-dataset.json"
 	@echo ""
 	@echo "  Ostatné:"
 	@echo "    build              Zostav všetky Docker imidže"

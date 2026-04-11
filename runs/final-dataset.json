@@ -1,56 +1,57 @@
 {
-  "dataset_id": "thesis-final-20260322",
-  "description": "Autoritatívny šesťbehový dataset pre finálny text bakalárskej práce.",
-  "selection_policy": "Jeden validovaný beh pre každý scenár z replikačnej kampane zo dňa 2026-03-22.",
+  "dataset_id": "thesis-final-20260411",
+  "description": "Autoritativny sestbehovy dataset pre finalny text bakalarskej prace, zregenerovany na aktualnom main stave repozitara.",
+  "selection_policy": "Jeden uspesne validovany beh pre kazdy scenar z plneho rerunu na aktualnom main zo dna 2026-04-11.",
+  "git_commit": "c7556d124d5818cb7199af6ab1ab004efacd3317",
   "run_ids": [
-    "20260322-161426",
-    "20260322-161440",
-    "20260322-161453",
-    "20260322-161510",
-    "20260322-161634",
-    "20260322-161643"
+    "20260411-235046",
+    "20260411-235112",
+    "20260411-235159",
+    "20260411-235226",
+    "20260411-235401",
+    "20260411-235510"
   ],
   "runs": [
     {
-      "run_id": "20260322-161426",
+      "run_id": "20260411-235046",
       "scenario": "mqtt-baseline",
-      "summary_path": "runs/20260322-161426/results/summary.json"
+      "summary_path": "runs/reference/20260411-235046/summary.json"
     },
     {
-      "run_id": "20260322-161440",
+      "run_id": "20260411-235112",
       "scenario": "mqtt-secure",
-      "summary_path": "runs/20260322-161440/results/summary.json"
+      "summary_path": "runs/reference/20260411-235112/summary.json"
     },
     {
-      "run_id": "20260322-161453",
+      "run_id": "20260411-235159",
       "scenario": "coap-baseline",
-      "summary_path": "runs/20260322-161453/results/summary.json"
+      "summary_path": "runs/reference/20260411-235159/summary.json"
     },
     {
-      "run_id": "20260322-161510",
+      "run_id": "20260411-235226",
       "scenario": "coap-secure",
-      "summary_path": "runs/20260322-161510/results/summary.json"
+      "summary_path": "runs/reference/20260411-235226/summary.json"
     },
     {
-      "run_id": "20260322-161634",
+      "run_id": "20260411-235401",
       "scenario": "ota-baseline",
-      "summary_path": "runs/20260322-161634/results/summary.json"
+      "summary_path": "runs/reference/20260411-235401/summary.json"
     },
     {
-      "run_id": "20260322-161643",
+      "run_id": "20260411-235510",
       "scenario": "ota-secure",
-      "summary_path": "runs/20260322-161643/results/summary.json"
+      "summary_path": "runs/reference/20260411-235510/summary.json"
     }
   ],
   "analysis_commands": {
-    "make": "make analyze-final RUN_IDS=20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643",
-    "fallback": "bash scripts/analyze_runs.sh 20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643"
+    "make": "make analyze-final",
+    "fallback": "bash scripts/analyze_runs.sh --final-dataset"
   },
   "analysis_outputs": [
     "runs/analysis-final.md",
-    "runs/analysis-aggregate.md",
-    "runs/analysis-aggregate.json",
-    "runs/aggregate.json",
+    "runs/analysis-final-aggregate.md",
+    "runs/analysis-final-aggregate.json",
+    "runs/aggregate-final.json",
     "runs/figures-final/"
   ]
 }

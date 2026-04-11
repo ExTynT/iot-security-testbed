@@ -182,13 +182,17 @@ Alternatíva bez `make`:
 bash scripts/analyze_runs.sh
 ```
 
-Výstupy:
+Výstupy v tomto režime sú lokálne exploratory artefakty, ktoré sa zámerne
+necommitujú do repozitára:
 
-- [`runs/analysis.md`](runs/analysis.md)
-- [`runs/analysis-aggregate.md`](runs/analysis-aggregate.md)
-- [`runs/analysis-aggregate.json`](runs/analysis-aggregate.json)
-- [`runs/aggregate.json`](runs/aggregate.json) - kompatibilitný alias pre strojovo čitateľnú agregáciu
-- [`runs/figures/`](runs/figures/)
+- `runs/analysis.md`
+- `runs/analysis-aggregate.md`
+- `runs/analysis-aggregate.json`
+- `runs/aggregate.json`
+- `runs/figures/`
+
+Tento režim je vhodný na priebežnú prácu s ľubovoľnými lokálnymi behovmi.
+Nie je autoritatívnym zdrojom pre finálny text práce.
 
 ## Artefakty behov
 
@@ -237,48 +241,57 @@ Táto štruktúra je zámerná. Umožňuje spätne prepojiť interpretáciu výs
 
 ## Referenčný dataset pre text práce
 
-Pre finálny text bakalárskej práce je použitá explicitne určená množina šiestich behov:
+Pre finálny text bakalárskej práce je použitá explicitne určená množina šiestich behov
+z plného rerunu na aktuálnom `main` stave repozitára zo dňa `2026-04-11`
+na committe `c7556d124d5818cb7199af6ab1ab004efacd3317`:
 
-- `20260322-161426`
-- `20260322-161440`
-- `20260322-161453`
-- `20260322-161510`
-- `20260322-161634`
-- `20260322-161643`
+- `20260411-235046`
+- `20260411-235112`
+- `20260411-235159`
+- `20260411-235226`
+- `20260411-235401`
+- `20260411-235510`
 
 Repo ich fixuje aj v machine-readable manifeste
 [`runs/final-dataset.json`](runs/final-dataset.json), aby bol výber datasetu auditovateľný aj
 bez dohľadávania v texte README.
 
+`runs/final-dataset.json` je jediný zdroj pravdy pre:
+
+- výber šiestich finálnych behov,
+- cesty k commitnutým referenčným `summary.json`,
+- generovanie finálneho reportu,
+- generovanie finálnych grafov a agregovaných JSON/Markdown výstupov.
+
 Autoritatívnu analýzu nad týmto datasetom vytvoríš takto:
 
 ```bash
-make analyze-final RUN_IDS=20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643
+make analyze-final
 ```
 
 Fallback bez `make`:
 
 ```bash
-bash scripts/analyze_runs.sh 20260322-161426,20260322-161440,20260322-161453,20260322-161510,20260322-161634,20260322-161643
+bash scripts/analyze_runs.sh --final-dataset
 ```
 
 Výstupy:
 
 - [`runs/final-dataset.json`](runs/final-dataset.json)
 - [`runs/analysis-final.md`](runs/analysis-final.md)
-- [`runs/analysis-aggregate.md`](runs/analysis-aggregate.md)
-- [`runs/analysis-aggregate.json`](runs/analysis-aggregate.json)
-- [`runs/aggregate.json`](runs/aggregate.json)
+- [`runs/analysis-final-aggregate.md`](runs/analysis-final-aggregate.md)
+- [`runs/analysis-final-aggregate.json`](runs/analysis-final-aggregate.json)
+- [`runs/aggregate-final.json`](runs/aggregate-final.json)
 - [`runs/figures-final/`](runs/figures-final/)
 
-Vybrané summary súbory referenčných behov:
+Vybrané summary súbory referenčných behov sú commitnuté v lightweight tvare:
 
-- [`runs/20260322-161426/results/summary.json`](runs/20260322-161426/results/summary.json)
-- [`runs/20260322-161440/results/summary.json`](runs/20260322-161440/results/summary.json)
-- [`runs/20260322-161453/results/summary.json`](runs/20260322-161453/results/summary.json)
-- [`runs/20260322-161510/results/summary.json`](runs/20260322-161510/results/summary.json)
-- [`runs/20260322-161634/results/summary.json`](runs/20260322-161634/results/summary.json)
-- [`runs/20260322-161643/results/summary.json`](runs/20260322-161643/results/summary.json)
+- [`runs/reference/20260411-235046/summary.json`](runs/reference/20260411-235046/summary.json)
+- [`runs/reference/20260411-235112/summary.json`](runs/reference/20260411-235112/summary.json)
+- [`runs/reference/20260411-235159/summary.json`](runs/reference/20260411-235159/summary.json)
+- [`runs/reference/20260411-235226/summary.json`](runs/reference/20260411-235226/summary.json)
+- [`runs/reference/20260411-235401/summary.json`](runs/reference/20260411-235401/summary.json)
+- [`runs/reference/20260411-235510/summary.json`](runs/reference/20260411-235510/summary.json)
 
 ## Štruktúra repozitára
 
@@ -319,6 +332,13 @@ iot-security-testbed/
 |   |-- test_run_secrets.py
 |   `-- test_workflows.py
 |-- runs/
+|   |-- reference/
+|   |-- final-dataset.json
+|   |-- analysis-final.md
+|   |-- analysis-final-aggregate.json
+|   |-- analysis-final-aggregate.md
+|   |-- aggregate-final.json
+|   `-- figures-final/
 |-- docker-compose.yml
 |-- docker-compose.mqtt-secure.yml
 |-- docker-compose.coap-secure.yml
@@ -329,7 +349,7 @@ iot-security-testbed/
 |-- pyproject.toml
 |-- README.md
 |-- SECURITY.md
-`-- THESIS_NOTES.md
+`-- CITATION.cff
 ```
 
 `docker-compose.secure.yml` je zámerne ponechaný len ako deprecated compatibility placeholder. Autoritatívne secure scenáre sú rozdelené do súborov `docker-compose.mqtt-secure.yml`, `docker-compose.coap-secure.yml` a `docker-compose.ota-secure.yml`.

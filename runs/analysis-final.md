@@ -4,55 +4,31 @@
 
 Analyza bola vygenerovana nad explicitne zvolenou finalnou mnozinou behov.
 
-Vybrate run IDs: **20260410-192908, 20260410-192936, 20260410-193000, 20260410-193022, 20260410-193154, 20260410-193218, 20260410-193239, 20260410-193303, 20260410-193327, 20260410-193350, 20260410-193524, 20260410-193546, 20260410-193607, 20260410-193630, 20260410-193657, 20260410-193720, 20260410-193852, 20260410-193913, 20260410-193934, 20260410-193957, 20260410-194021, 20260410-194043, 20260410-194216, 20260410-194237, 20260410-194258, 20260410-194321, 20260410-194345, 20260410-194410, 20260410-194542, 20260410-194603**
+Vybrate run IDs: **20260411-235046, 20260411-235112, 20260411-235159, 20260411-235226, 20260411-235401, 20260411-235510**
 
 Figury boli ulozene do: **runs/figures-final/**
 
 ## 1. Prehlad runs
 
-Celkovy pocet behov: **30**
+Celkovy pocet behov: **6**
 
 | Run ID | Scenar |
 |--------|--------|
-| 20260410-192908 | mqtt-baseline |
-| 20260410-192936 | mqtt-secure |
-| 20260410-193000 | coap-baseline |
-| 20260410-193022 | coap-secure |
-| 20260410-193154 | ota-baseline |
-| 20260410-193218 | ota-secure |
-| 20260410-193239 | mqtt-baseline |
-| 20260410-193303 | mqtt-secure |
-| 20260410-193327 | coap-baseline |
-| 20260410-193350 | coap-secure |
-| 20260410-193524 | ota-baseline |
-| 20260410-193546 | ota-secure |
-| 20260410-193607 | mqtt-baseline |
-| 20260410-193630 | mqtt-secure |
-| 20260410-193657 | coap-baseline |
-| 20260410-193720 | coap-secure |
-| 20260410-193852 | ota-baseline |
-| 20260410-193913 | ota-secure |
-| 20260410-193934 | mqtt-baseline |
-| 20260410-193957 | mqtt-secure |
-| 20260410-194021 | coap-baseline |
-| 20260410-194043 | coap-secure |
-| 20260410-194216 | ota-baseline |
-| 20260410-194237 | ota-secure |
-| 20260410-194258 | mqtt-baseline |
-| 20260410-194321 | mqtt-secure |
-| 20260410-194345 | coap-baseline |
-| 20260410-194410 | coap-secure |
-| 20260410-194542 | ota-baseline |
-| 20260410-194603 | ota-secure |
+| 20260411-235046 | mqtt-baseline |
+| 20260411-235112 | mqtt-secure |
+| 20260411-235159 | coap-baseline |
+| 20260411-235226 | coap-secure |
+| 20260411-235401 | ota-baseline |
+| 20260411-235510 | ota-secure |
 
 | Scenar | Pocet replikacii |
 |--------|-----------------|
-| P1 MQTT Baseline | 5 |
-| P1 MQTT Secure | 5 |
-| P2 CoAP Baseline | 5 |
-| P2 CoAP Secure | 5 |
-| P3 OTA Baseline | 5 |
-| P3 OTA Secure | 5 |
+| P1 MQTT Baseline | 1 |
+| P1 MQTT Secure | 1 |
+| P2 CoAP Baseline | 1 |
+| P2 CoAP Secure | 1 |
+| P3 OTA Baseline | 1 |
+| P3 OTA Secure | 1 |
 
 | Scenar | Behy s varovaniami |
 |--------|--------------------|
@@ -69,6 +45,7 @@ Priemerne hodnoty KPI napriec replikaciami.
 
 | KPI | Baseline (priemer) | Secure (priemer) | Baseline OK? | Secure OK? |
 |---|---|---|---|---|
+| MQTT unauth success | 30 (> 0 (utok uspel)) | 0 (= 0 (zablokovany)) | OK | OK |
 | MQTT unauth denied | 0 (= 0 (utok uspel)) | 30 (> 0 (odmietnuty)) | OK | OK |
 | CoAP plain GETs | 10 (> 0 (plaintext citanie)) | 0 (= 0 (plaintext endpoint disabled)) | OK | OK |
 | CoAP plaintext endpoint disabled | 0 (N/A) | 3 (> 0 (plaintext endpoint disabled)) | OK | OK |
@@ -78,7 +55,21 @@ Priemerne hodnoty KPI napriec replikaciami.
 | OTA evil blocked | 0 (= 0 (ziadna obrana)) | 1 (> 0 (podpis zamietol)) | OK | OK |
 | OTA signed update OK | 0 (N/A) | 1 (>= 1 (legitimna OTA funguje)) | OK | OK |
 
-## 3. Vizualizacia KPI (ASCII)
+## 3. Explicitna uspesnost behov
+
+Binarne PASS/FAIL vyhodnotenie je odvodene z `KPI_META` check funkcii a z toho, ci `summary.json` obsahuje warningy.
+
+| Scenar | Behy | PASS | FAIL | Warningy | Success rate |
+|--------|------|------|------|----------|--------------|
+| P1 MQTT Baseline | 1 | 1 | 0 | 0 | 100.0% |
+| P1 MQTT Secure | 1 | 1 | 0 | 0 | 100.0% |
+| P2 CoAP Baseline | 1 | 1 | 0 | 0 | 100.0% |
+| P2 CoAP Secure | 1 | 1 | 0 | 0 | 100.0% |
+| P3 OTA Baseline | 1 | 1 | 0 | 0 | 100.0% |
+| P3 OTA Secure | 1 | 1 | 0 | 0 | 100.0% |
+| Celkom | 6 | 6 | 0 | 0 | 100.0% |
+
+## 4. Vizualizacia KPI (ASCII)
 
 ### P1: MQTT unauth denied
 
@@ -115,7 +106,7 @@ Priemerne hodnoty KPI napriec replikaciami.
     Secure [##############################]  1
 ```
 
-## 4. Interpretacia vysledkov
+## 5. Interpretacia vysledkov
 
 ### P1 - MQTT autentifikacia a sifrovanie
 
@@ -129,7 +120,7 @@ Baseline potvrdzuje plaintext pristup cez port 5683 bez autentifikacie. Secure s
 
 Baseline potvrdzuje, ze DUT akceptuje firmver z lubovolneho servera bez overenia podpisu (P3_ota_evil_applied > 0). Secure scenar s pinovanym verejnym klucom zachoval funkcnost legitimnej podpisanej OTA aktualizacie (P3_ota_signed_ok >= 1) a zaroven odmietol evil firmver (P3_ota_evil_blocked > 0, P3_ota_evil_applied = 0).
 
-## 5. Dopad na CIA a CVSS v4.0 hodnotenie
+## 6. Dopad na CIA a CVSS v4.0 hodnotenie
 
 Poznamka: CVSS a CIA su analyticky odhad autora, nie automaticky merane KPI.
 
@@ -143,7 +134,7 @@ Skore je uvedene ako porovnanie stavu pred mitigaciou a po mitigacii.
 
 > Rezidualne skore po mitigacii je analyticky odhad: P1=2.1 (brute-force hesla / TLS handshake flood), P2=3.1 (konzervativny odhad rezidualneho dopadu mimo priamo testovanej operacie), P3=2.1 (rollback attack bez version-pinningu).
 
-## 6. Verzie komponentov (reprodukovatelnost)
+## 7. Verzie komponentov (reprodukovatelnost)
 
 | Komponent | Verzia |
 |-----------|--------|
@@ -157,4 +148,4 @@ Skore je uvedene ako porovnanie stavu pred mitigaciou a po mitigacii.
 | OpenSSL (DTLS klient) | 3.x (Alpine 3.20) |
 
 ---
-*Generovane automaticky z 30 explicitne zvolenych run(s) v priecinku `/runs` so scope `20260410-192908, 20260410-192936, 20260410-193000, 20260410-193022, 20260410-193154, 20260410-193218, 20260410-193239, 20260410-193303, 20260410-193327, 20260410-193350, 20260410-193524, 20260410-193546, 20260410-193607, 20260410-193630, 20260410-193657, 20260410-193720, 20260410-193852, 20260410-193913, 20260410-193934, 20260410-193957, 20260410-194021, 20260410-194043, 20260410-194216, 20260410-194237, 20260410-194258, 20260410-194321, 20260410-194345, 20260410-194410, 20260410-194542, 20260410-194603`.*
+*Generovane automaticky z 6 explicitne zvolenych run(s) v priecinku `/runs` so scope `20260411-235046, 20260411-235112, 20260411-235159, 20260411-235226, 20260411-235401, 20260411-235510`.*

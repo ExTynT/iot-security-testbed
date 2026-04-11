@@ -2,7 +2,6 @@
 .env
 .env.local
 .env.*
-runs;C/
 lo_profile/
 pages/
 *.tmp
@@ -54,6 +53,13 @@ configs/ota/*.key
 !configs/ota/repo/manifest.json
 
 # Nové timestampované runy sa nemajú commitovať automaticky.
-# Referenčné runy a agregované analýzy, ktoré sú už vo verziovaní, ostávajú zachované.
+# Referenčné summary a final thesis výstupy sú commitnuté osobitne.
 runs/20*/
 !runs/.gitkeep
+runs/analysis.md
+runs/analysis-aggregate.json
+runs/analysis-aggregate.md
+runs/aggregate.json
+runs/analysis-final-fallback.md
+runs/figures/
+runs/figures-final-fallback/

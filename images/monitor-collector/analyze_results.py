@@ -28,6 +28,31 @@ RUNS_DIR = Path("/runs")
 FIGURES_SUBDIR = os.getenv("ANALYZE_FIGURES_SUBDIR", "figures")
 FIGURES_DIR = RUNS_DIR / FIGURES_SUBDIR
 
+
+def resolve_runs_path(path_value: str, *, default: Path | None = None) -> Path:
+    """Prevedie repo-relatívnu `runs/...` cestu na mountnutú cestu v kontajneri."""
+    if not path_value:
+        if default is None:
+            raise ValueError("Path value or default must be provided.")
+        return default
+
+    path = Path(path_value)
+    if path.is_absolute():
+        return path
+
+    parts = list(path.parts)
+    if parts and parts[0] == "runs":
+        return RUNS_DIR.joinpath(*parts[1:])
+    return RUNS_DIR / path
+
+
+def optional_runs_path(env_name: str) -> Path | None:
+    """Vráti cestu z premennej prostredia alebo `None`, ak nie je nastavená."""
+    value = os.getenv(env_name)
+    if not value:
+        return None
+    return resolve_runs_path(value)
+
 SCENARIO_ORDER = [
     "mqtt-baseline", "mqtt-secure",
     "coap-baseline", "coap-secure",
@@ -126,9 +151,19 @@ COMPONENT_VERSIONS = [
     ("OpenSSL (DTLS klient)", "3.x (Alpine 3.20)"),
 ]
 
-AGGREGATE_JSON_PATH = RUNS_DIR / "analysis-aggregate.json"
-LEGACY_AGGREGATE_JSON_PATH = RUNS_DIR / "aggregate.json"
-AGGREGATE_MARKDOWN_PATH = RUNS_DIR / "analysis-aggregate.md"
+DATASET_MANIFEST_PATH = optional_runs_path("ANALYZE_DATASET_MANIFEST")
+AGGREGATE_JSON_PATH = resolve_runs_path(
+    os.getenv("ANALYZE_AGGREGATE_JSON_PATH", ""),
+    default=RUNS_DIR / "analysis-aggregate.json",
+)
+LEGACY_AGGREGATE_JSON_PATH = resolve_runs_path(
+    os.getenv("ANALYZE_LEGACY_AGGREGATE_JSON_PATH", ""),
+    default=RUNS_DIR / "aggregate.json",
+)
+AGGREGATE_MARKDOWN_PATH = resolve_runs_path(
+    os.getenv("ANALYZE_AGGREGATE_MARKDOWN_PATH", ""),
+    default=RUNS_DIR / "analysis-aggregate.md",
+)
 
 
 def parse_run_ids(value: str | None) -> list[str]:
@@ -139,29 +174,75 @@ def parse_run_ids(value: str | None) -> list[str]:
     return [part.strip() for part in normalized.split(",") if part.strip()]
 
 
-def load_runs(selected_run_ids: set[str] | None = None) -> list[dict]:
-    """Načíta všetky kompatibilné `summary.json` z adresára `runs/`."""
-    runs = []
+def load_dataset_manifest() -> dict | None:
+    """Načíta manifest finálneho datasetu, ak bol explicitne zadaný."""
+    if DATASET_MANIFEST_PATH is None:
+        return None
+    return json.loads(DATASET_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def read_summary(summary_path: Path) -> dict | None:
+    """Načíta `summary.json` a vráti `None` pre nekompatibilné alebo poškodené dáta."""
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if "kpi" not in data:
+        return None
+    return data
+
+
+def build_run_record(
+    summary_path: Path,
+    data: dict,
+    *,
+    run_id_override: str | None = None,
+    scenario_override: str | None = None,
+) -> dict:
+    """Normalizuje jeden `summary.json` na interný záznam behu."""
+    meta = data.get("meta", {})
+    run_id = run_id_override or meta.get("run_id") or summary_path.parts[-3]
+    scenario_file = summary_path.parent.parent / "state" / "scenario.txt"
+    scenario = data.get("scenario") or scenario_override or (
+        scenario_file.read_text(encoding="utf-8").strip() if scenario_file.exists() else "unknown"
+    )
+    return {
+        "run_id": run_id,
+        "scenario": scenario,
+        "kpi": data["kpi"],
+        "warnings": data.get("warnings", []),
+    }
+
+
+def load_runs(selected_run_ids: set[str] | None = None, dataset_manifest: dict | None = None) -> list[dict]:
+    """Načíta všetky kompatibilné `summary.json` zo `runs/` alebo z final dataset manifestu."""
+    runs: list[dict] = []
+
+    if dataset_manifest is not None:
+        for entry in dataset_manifest.get("runs", []):
+            run_id = entry.get("run_id", "")
+            if selected_run_ids is not None and run_id not in selected_run_ids:
+                continue
+            summary_path = resolve_runs_path(entry["summary_path"])
+            data = read_summary(summary_path)
+            if data is None:
+                continue
+            runs.append(build_run_record(
+                summary_path,
+                data,
+                run_id_override=run_id,
+                scenario_override=entry.get("scenario"),
+            ))
+        return runs
+
     for summary_path in sorted(RUNS_DIR.glob("*/results/summary.json")):
         run_id = summary_path.parts[-3]
         if selected_run_ids is not None and run_id not in selected_run_ids:
             continue
-        try:
-            data = json.loads(summary_path.read_text(encoding="utf-8"))
-        except Exception:
+        data = read_summary(summary_path)
+        if data is None:
             continue
-        if "kpi" not in data:
-            continue
-        scenario_file = summary_path.parent.parent / "state" / "scenario.txt"
-        scenario = data.get("scenario") or (
-            scenario_file.read_text(encoding="utf-8").strip() if scenario_file.exists() else "unknown"
-        )
-        runs.append({
-            "run_id": run_id,
-            "scenario": scenario,
-            "kpi": data["kpi"],
-            "warnings": data.get("warnings", []),
-        })
+        runs.append(build_run_record(summary_path, data, run_id_override=run_id))
     return runs
 
 
@@ -690,12 +771,25 @@ def create_figures(by_scenario: dict[str, list[dict]]) -> None:
 
 def main() -> int:
     """Načíta výsledky behov a vygeneruje všetky agregačné výstupy."""
+    dataset_manifest = load_dataset_manifest()
     selected_run_ids = parse_run_ids(os.getenv("ANALYZE_RUN_IDS"))
+    if dataset_manifest is not None:
+        selected_run_ids = dataset_manifest.get("run_ids", []) or [
+            entry.get("run_id", "") for entry in dataset_manifest.get("runs", []) if entry.get("run_id")
+        ]
     selected_run_id_set = set(selected_run_ids) if selected_run_ids else None
-    runs = load_runs(selected_run_id_set)
+    runs = load_runs(selected_run_id_set, dataset_manifest)
     if not runs:
         print("# Analyza IoT Security Testbed\n")
-        if selected_run_ids:
+        if dataset_manifest is not None:
+            print(
+                "Manifest finalneho datasetu bol nacitany, ale jeho `summary.json` artefakty sa "
+                "nepodarilo nacitat v kompatibilnom formate."
+            )
+            if selected_run_ids:
+                print(f"Ocakavane run IDs: {', '.join(selected_run_ids)}")
+            print(f"Manifest: {DATASET_MANIFEST_PATH}")
+        elif selected_run_ids:
             print(
                 "Pre zadane `ANALYZE_RUN_IDS` neboli najdene zodpovedajuce runs s novym formatom summary.json "
                 "(obsahujuce 'kpi' kluc)."
@@ -731,6 +825,7 @@ def main() -> int:
     create_figures(by_scenario)
     print(f"[AGGREGATE] JSON ulozene do: {AGGREGATE_JSON_PATH}", file=sys.stderr)
     print(f"[AGGREGATE] Markdown ulozene do: {AGGREGATE_MARKDOWN_PATH}", file=sys.stderr)
+    print(f"[AGGREGATE] Legacy alias ulozeny do: {LEGACY_AGGREGATE_JSON_PATH}", file=sys.stderr)
     print(f"\n[GRAFY] Vsetky grafy ulozene do: {FIGURES_DIR}", file=sys.stderr)
     return 0
 
